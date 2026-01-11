@@ -1,0 +1,84 @@
+import { ReactNode } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Column<T> {
+  key: string;
+  header: string;
+  render: (item: T) => ReactNode;
+  className?: string;
+}
+
+interface DataTableProps<T> {
+  columns: Column<T>[];
+  data: T[];
+  isLoading?: boolean;
+  emptyMessage?: string;
+  getRowId: (item: T) => string;
+  onRowClick?: (item: T) => void;
+}
+
+export function DataTable<T>({
+  columns,
+  data,
+  isLoading = false,
+  emptyMessage = 'No data available',
+  getRowId,
+  onRowClick,
+}: DataTableProps<T>) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead key={column.key} className={column.className}>
+                {column.header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                {emptyMessage}
+              </TableCell>
+            </TableRow>
+          ) : (
+            data.map((item) => (
+              <TableRow
+                key={getRowId(item)}
+                onClick={() => onRowClick?.(item)}
+                className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
+              >
+                {columns.map((column) => (
+                  <TableCell key={column.key} className={column.className}>
+                    {column.render(item)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
