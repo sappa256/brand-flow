@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { Plus, Instagram, Youtube, Linkedin, Mail, Phone } from 'lucide-react';
-import type { Lead, LeadStatus } from '@/types/crm';
+import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
+import { Plus, Instagram, Youtube, Linkedin, Mail, Phone, FileText } from 'lucide-react';
+import type { Lead } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 
 const LEAD_COLUMNS = [
   { id: 'new', title: 'New', count: 0 },
@@ -20,6 +22,9 @@ const LEAD_COLUMNS = [
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchLeads();
@@ -37,8 +42,27 @@ export default function Leads() {
     setIsLoading(false);
   };
 
+  const handleCardClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setFormOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedLead(null);
+    setFormOpen(true);
+  };
+
+  const handleCreateProposal = (lead: Lead, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Navigate to proposals with lead pre-selected
+    navigate('/proposals', { state: { preselectedLead: lead } });
+  };
+
   const renderLeadCard = (lead: Lead) => (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow">
+    <Card 
+      className="cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => handleCardClick(lead)}
+    >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between">
           <div>
@@ -63,6 +87,18 @@ export default function Leads() {
             Budget: ₹{lead.budget_range.replace('_plus', '+')}
           </p>
         )}
+
+        {(lead.status === 'qualified' || lead.status === 'proposal_required') && (
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            className="w-full mt-2"
+            onClick={(e) => handleCreateProposal(lead, e)}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            Create Proposal
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -83,7 +119,7 @@ export default function Leads() {
     <AppLayout
       title="Leads"
       actions={
-        <Button size="sm">
+        <Button size="sm" onClick={handleAddNew}>
           <Plus className="h-4 w-4 mr-2" />
           Add Lead
         </Button>
@@ -96,6 +132,13 @@ export default function Leads() {
         getItemId={(lead) => lead.id}
         renderItem={renderLeadCard}
         emptyMessage="No leads"
+      />
+
+      <LeadFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        lead={selectedLead}
+        onSuccess={fetchLeads}
       />
     </AppLayout>
   );
