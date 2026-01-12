@@ -1,0 +1,201 @@
+import { useEffect, useState } from 'react';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { KanbanBoard } from '@/components/shared/KanbanBoard';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { ReelFormDialog } from '@/components/reels/ReelFormDialog';
+import { Plus, User, Hash, AlertTriangle } from 'lucide-react';
+import type { Reel } from '@/types/crm';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const EDIT_STATUS_COLUMNS = [
+  { id: 'not_started', title: 'Not Started', count: 0 },
+  { id: 'editing', title: 'Editing', count: 0 },
+  { id: 'ready_for_review', title: 'Ready for Review', count: 0 },
+  { id: 'approved', title: 'Approved', count: 0 },
+];
+
+interface Client {
+  id: string;
+  client_name: string;
+}
+
+export default function Reels() {
+  const [reels, setReels] = useState<Reel[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
+  const [filterClient, setFilterClient] = useState<string>('all');
+  const [filterBatch, setFilterBatch] = useState<string>('all');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const [reelsRes, clientsRes] = await Promise.all([
+      supabase
+        .from('reels')
+        .select('*, client:clients(*), editor:profiles(*)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('clients')
+        .select('id, client_name')
+        .eq('status', 'active')
+        .order('client_name'),
+    ]);
+
+    if (!reelsRes.error && reelsRes.data) {
+      setReels(reelsRes.data as Reel[]);
+    }
+    if (!clientsRes.error && clientsRes.data) {
+      setClients(clientsRes.data);
+    }
+    setIsLoading(false);
+  };
+
+  const handleCardClick = (reel: Reel) => {
+    setSelectedReel(reel);
+    setFormOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedReel(null);
+    setFormOpen(true);
+  };
+
+  const filteredReels = reels.filter((reel) => {
+    if (filterClient !== 'all' && reel.client_id !== filterClient) return false;
+    if (filterBatch !== 'all' && reel.batch !== filterBatch) return false;
+    return true;
+  });
+
+  const renderReelCard = (reel: Reel) => (
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => handleCardClick(reel)}
+    >
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-medium text-sm">
+              {reel.client?.client_name || 'Unknown Client'}
+            </h3>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Hash className="h-3 w-3" />
+              Reel {reel.reel_number} • Month {reel.month_number}
+            </p>
+          </div>
+          {reel.priority === 'high' && (
+            <Badge variant="destructive" className="text-xs">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              High
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-xs">
+            Script: {reel.script_status === 'approved' ? 'Approved' : 'Pending'}
+          </Badge>
+          {reel.batch && (
+            <Badge variant="outline" className="text-xs">
+              {reel.batch.replace('_', ' ')}
+            </Badge>
+          )}
+        </div>
+
+        {reel.editor && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <User className="h-3 w-3" />
+            <span>{reel.editor.full_name}</span>
+          </div>
+        )}
+
+        {reel.notes && (
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {reel.notes}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Reels">
+        <div className="flex gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-96 w-80" />
+          ))}
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout
+      title="Reels"
+      actions={
+        <div className="flex items-center gap-3">
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Clients" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Clients</SelectItem>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.client_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterBatch} onValueChange={setFilterBatch}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="All Batches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Batches</SelectItem>
+              <SelectItem value="batch_1">Batch 1</SelectItem>
+              <SelectItem value="batch_2">Batch 2</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button size="sm" onClick={handleAddNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Reel
+          </Button>
+        </div>
+      }
+    >
+      <KanbanBoard
+        columns={EDIT_STATUS_COLUMNS}
+        items={filteredReels}
+        getItemColumn={(reel) => reel.edit_status}
+        getItemId={(reel) => reel.id}
+        renderItem={renderReelCard}
+        emptyMessage="No reels"
+      />
+
+      <ReelFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        reel={selectedReel}
+        clients={clients}
+        onSuccess={fetchData}
+      />
+    </AppLayout>
+  );
+}
