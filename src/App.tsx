@@ -16,6 +16,7 @@ import Shoots from "./pages/Shoots";
 import Strategy from "./pages/Strategy";
 import Calendar from "./pages/Calendar";
 import Cycles from "./pages/Cycles";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/cycles" element={<ProtectedRoute><Cycles /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
