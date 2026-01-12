@@ -8,9 +8,11 @@ import type { Contract, Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, IndianRupee, Plus } from 'lucide-react';
+import { AlertTriangle, IndianRupee, Plus, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { generateContractPdf } from '@/lib/contractPdfGenerator';
+import { toast } from 'sonner';
 
 interface ContractWithClient extends Contract {
   client: Client;
@@ -45,6 +47,15 @@ export default function Contracts() {
 
   const handleSuccess = () => {
     fetchContracts();
+  };
+
+  const handleDownloadPdf = (contract: ContractWithClient) => {
+    try {
+      generateContractPdf(contract);
+      toast.success('Contract PDF downloaded');
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+    }
   };
 
   const getDaysUntilEnd = (endDate: string) => {
@@ -145,6 +156,20 @@ export default function Contracts() {
           </Badge>
         );
       },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (contract: ContractWithClient) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => handleDownloadPdf(contract)}
+          title="Download Contract PDF"
+        >
+          <FileDown className="h-4 w-4" />
+        </Button>
+      ),
     },
   ];
 
