@@ -9,10 +9,13 @@ import type { Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { ClientFormDialog } from '@/components/clients/ClientFormDialog';
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -28,6 +31,20 @@ export default function Clients() {
       setClients(data as Client[]);
     }
     setIsLoading(false);
+  };
+
+  const handleAddClient = () => {
+    setSelectedClient(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditClient = (client: Client) => {
+    setSelectedClient(client);
+    setDialogOpen(true);
+  };
+
+  const handleSuccess = () => {
+    fetchClients();
   };
 
   const columns = [
@@ -90,7 +107,7 @@ export default function Clients() {
       key: 'actions',
       header: 'Actions',
       render: (client: Client) => (
-        <Button size="sm" variant="ghost">
+        <Button size="sm" variant="ghost" onClick={() => handleEditClient(client)}>
           <Eye className="h-4 w-4" />
         </Button>
       ),
@@ -109,7 +126,7 @@ export default function Clients() {
     <AppLayout
       title="Clients"
       actions={
-        <Button size="sm">
+        <Button size="sm" onClick={handleAddClient}>
           <Plus className="h-4 w-4 mr-2" />
           Add Client
         </Button>
@@ -120,6 +137,13 @@ export default function Clients() {
         columns={columns}
         getRowId={(client) => client.id}
         emptyMessage="No clients yet. Convert a proposal to create your first client."
+      />
+
+      <ClientFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        client={selectedClient}
+        onSuccess={handleSuccess}
       />
     </AppLayout>
   );
