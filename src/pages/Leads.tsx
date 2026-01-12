@@ -7,9 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
 import { Plus, Instagram, Youtube, Linkedin, Mail, Phone, FileText } from 'lucide-react';
-import type { Lead } from '@/types/crm';
+import type { Lead, LeadStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const LEAD_COLUMNS = [
   { id: 'new', title: 'New', count: 0 },
@@ -54,8 +55,24 @@ export default function Leads() {
 
   const handleCreateProposal = (lead: Lead, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Navigate to proposals with lead pre-selected
     navigate('/proposals', { state: { preselectedLead: lead } });
+  };
+
+  const handleLeadMove = async (leadId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('leads')
+      .update({ status: newStatus as LeadStatus })
+      .eq('id', leadId);
+
+    if (error) {
+      toast.error('Failed to update lead status');
+      return;
+    }
+
+    setLeads(prev => prev.map(lead => 
+      lead.id === leadId ? { ...lead, status: newStatus as LeadStatus } : lead
+    ));
+    toast.success('Lead moved successfully');
   };
 
   const renderLeadCard = (lead: Lead) => (
@@ -132,6 +149,7 @@ export default function Leads() {
         getItemId={(lead) => lead.id}
         renderItem={renderLeadCard}
         emptyMessage="No leads"
+        onItemMove={handleLeadMove}
       />
 
       <LeadFormDialog

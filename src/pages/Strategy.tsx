@@ -184,6 +184,7 @@ export default function Strategy() {
             getItemId={(s) => s.id}
             renderItem={renderCard}
             emptyMessage="No strategies"
+            onItemMove={(id, newStatus) => updateStatus.mutate({ id, status: newStatus as StrategyStatus })}
           />
         )}
       </div>

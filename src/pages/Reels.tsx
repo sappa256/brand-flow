@@ -6,9 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { ReelFormDialog } from '@/components/reels/ReelFormDialog';
 import { Plus, User, Hash, AlertTriangle } from 'lucide-react';
-import type { Reel } from '@/types/crm';
+import type { Reel, EditStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -79,6 +80,23 @@ export default function Reels() {
     if (filterBatch !== 'all' && reel.batch !== filterBatch) return false;
     return true;
   });
+
+  const handleReelMove = async (reelId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('reels')
+      .update({ edit_status: newStatus as EditStatus })
+      .eq('id', reelId);
+
+    if (error) {
+      toast.error('Failed to update reel status');
+      return;
+    }
+
+    setReels(prev => prev.map(reel => 
+      reel.id === reelId ? { ...reel, edit_status: newStatus as EditStatus } : reel
+    ));
+    toast.success('Reel moved successfully');
+  };
 
   const renderReelCard = (reel: Reel) => (
     <Card
@@ -187,6 +205,7 @@ export default function Reels() {
         getItemId={(reel) => reel.id}
         renderItem={renderReelCard}
         emptyMessage="No reels"
+        onItemMove={handleReelMove}
       />
 
       <ReelFormDialog
