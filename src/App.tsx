@@ -13,6 +13,9 @@ import Clients from "./pages/Clients";
 import Contracts from "./pages/Contracts";
 import Reels from "./pages/Reels";
 import Shoots from "./pages/Shoots";
+import Strategy from "./pages/Strategy";
+import Calendar from "./pages/Calendar";
+import Cycles from "./pages/Cycles";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -47,6 +50,9 @@ function AppRoutes() {
       <Route path="/contracts" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
       <Route path="/reels" element={<ProtectedRoute><Reels /></ProtectedRoute>} />
       <Route path="/shoots" element={<ProtectedRoute><Shoots /></ProtectedRoute>} />
+      <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+      <Route path="/cycles" element={<ProtectedRoute><Cycles /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
