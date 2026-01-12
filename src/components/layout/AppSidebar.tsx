@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  FolderOpen,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { title: 'Reels', href: '/reels', icon: Film, roles: ['admin', 'editor', 'strategy'] },
   { title: 'Calendar', href: '/calendar', icon: Calendar, roles: ['admin', 'social_media', 'strategy'] },
   { title: 'Cycles', href: '/cycles', icon: RefreshCw, roles: ['admin', 'strategy'] },
+  { title: 'Files', href: '/files', icon: FolderOpen, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },
 ];
 
 export function AppSidebar() {
