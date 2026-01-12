@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +16,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download } from 'lucide-react';
 import type { AppRole } from '@/types/crm';
 import { Navigate } from 'react-router-dom';
+import { generateContractPdf } from '@/lib/contractPdfGenerator';
+import type { Contract, Client, PlanType } from '@/types/crm';
 
 const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',
@@ -51,6 +54,28 @@ export default function Settings() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>('sales');
+  
+  // Contract settings state
+  const [companySettings, setCompanySettings] = useState({
+    companyName: 'Montaz Medias',
+    tagline: 'Premium Marketing Agency',
+    email: 'contracts@montazmedias.com',
+    phone: '+91 98765 43210',
+    website: 'www.montazmedias.com',
+    address: 'Mumbai, Maharashtra, India',
+    bankName: 'HDFC Bank',
+    accountNumber: 'XXXX XXXX XXXX 1234',
+    ifscCode: 'HDFC0001234',
+    gstNumber: 'GST123456789',
+  });
+  
+  const [contractTerms, setContractTerms] = useState({
+    paymentTerms: 'Payment is due within 7 days of invoice date. Late payments will incur a 2% monthly interest charge.',
+    cancellationPolicy: 'Either party may terminate this agreement with 30 days written notice. Early termination by Client requires payment of remaining contract value at 50%.',
+    deliverables: 'All content deliverables remain property of Montaz Medias until full payment is received. Upon payment, perpetual usage rights are granted to the Client.',
+    confidentiality: 'Both parties agree to maintain confidentiality of proprietary information shared during the engagement.',
+    revisionPolicy: 'Each reel includes up to 2 rounds of revisions. Additional revisions will be billed at ₹2,000 per round.',
+  });
 
   // Check admin access
   if (!hasRole('admin')) {
@@ -155,7 +180,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="team" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
             <TabsTrigger value="team" className="gap-2">
               <Users className="h-4 w-4" />
               Team
@@ -163,6 +188,10 @@ export default function Settings() {
             <TabsTrigger value="roles" className="gap-2">
               <Shield className="h-4 w-4" />
               Roles
+            </TabsTrigger>
+            <TabsTrigger value="contracts" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Contracts
             </TabsTrigger>
             <TabsTrigger value="preferences" className="gap-2">
               <SettingsIcon className="h-4 w-4" />
@@ -306,6 +335,246 @@ export default function Settings() {
                 );
               })}
             </div>
+          </TabsContent>
+
+          {/* Contracts Tab */}
+          <TabsContent value="contracts" className="space-y-6">
+            {/* Company Branding */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Company Branding</CardTitle>
+                <CardDescription>
+                  Configure your company details for contract PDFs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Input 
+                      id="companyName" 
+                      value={companySettings.companyName}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, companyName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tagline">Tagline</Label>
+                    <Input 
+                      id="tagline" 
+                      value={companySettings.tagline}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, tagline: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyEmail">Email</Label>
+                    <Input 
+                      id="companyEmail" 
+                      type="email"
+                      value={companySettings.email}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyPhone">Phone</Label>
+                    <Input 
+                      id="companyPhone" 
+                      value={companySettings.phone}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input 
+                      id="website" 
+                      value={companySettings.website}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, website: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input 
+                      id="address" 
+                      value={companySettings.address}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, address: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bank Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Bank & Tax Details</CardTitle>
+                <CardDescription>
+                  Bank information displayed on contract payment terms
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input 
+                      id="bankName" 
+                      value={companySettings.bankName}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, bankName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="accountNumber">Account Number</Label>
+                    <Input 
+                      id="accountNumber" 
+                      value={companySettings.accountNumber}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, accountNumber: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ifscCode">IFSC Code</Label>
+                    <Input 
+                      id="ifscCode" 
+                      value={companySettings.ifscCode}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, ifscCode: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gstNumber">GST Number</Label>
+                    <Input 
+                      id="gstNumber" 
+                      value={companySettings.gstNumber}
+                      onChange={(e) => setCompanySettings(prev => ({ ...prev, gstNumber: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contract Terms */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contract Terms & Policies</CardTitle>
+                <CardDescription>
+                  Customize the legal terms included in your contracts
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paymentTerms">Payment Terms</Label>
+                  <Textarea 
+                    id="paymentTerms" 
+                    rows={3}
+                    value={contractTerms.paymentTerms}
+                    onChange={(e) => setContractTerms(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cancellationPolicy">Cancellation Policy</Label>
+                  <Textarea 
+                    id="cancellationPolicy" 
+                    rows={3}
+                    value={contractTerms.cancellationPolicy}
+                    onChange={(e) => setContractTerms(prev => ({ ...prev, cancellationPolicy: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deliverables">Deliverables & IP Rights</Label>
+                  <Textarea 
+                    id="deliverables" 
+                    rows={3}
+                    value={contractTerms.deliverables}
+                    onChange={(e) => setContractTerms(prev => ({ ...prev, deliverables: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confidentiality">Confidentiality Clause</Label>
+                  <Textarea 
+                    id="confidentiality" 
+                    rows={2}
+                    value={contractTerms.confidentiality}
+                    onChange={(e) => setContractTerms(prev => ({ ...prev, confidentiality: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="revisionPolicy">Revision Policy</Label>
+                  <Textarea 
+                    id="revisionPolicy" 
+                    rows={2}
+                    value={contractTerms.revisionPolicy}
+                    onChange={(e) => setContractTerms(prev => ({ ...prev, revisionPolicy: e.target.value }))}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Preview & Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Preview Contract</CardTitle>
+                <CardDescription>
+                  Generate a sample contract PDF with your current settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={() => {
+                      const now = new Date();
+                      const endDate = new Date(now);
+                      endDate.setMonth(endDate.getMonth() + 6);
+                      
+                      const sampleClient: Client = {
+                        id: 'sample-id',
+                        client_name: 'Sample Client',
+                        brand_name: 'Sample Brand',
+                        plan_type: 'accelerator' as PlanType,
+                        status: 'active',
+                        start_date: now.toISOString().split('T')[0],
+                        end_date: endDate.toISOString().split('T')[0],
+                        current_contract_month: 1,
+                        platforms_managed: ['Instagram', 'YouTube'],
+                        niche: 'Business',
+                        notes: null,
+                        lead_id: null,
+                        proposal_id: null,
+                        account_manager_id: null,
+                        created_at: now.toISOString(),
+                        updated_at: now.toISOString(),
+                      };
+                      
+                      const sampleContract = {
+                        id: 'sample-contract-id',
+                        client_id: 'sample-id',
+                        start_date: now.toISOString().split('T')[0],
+                        end_date: endDate.toISOString().split('T')[0],
+                        duration_months: 6,
+                        monthly_retainer: 75000,
+                        payment_status: 'pending' as const,
+                        contract_status: 'active' as const,
+                        renewal_probability: 'high' as const,
+                        created_at: now.toISOString(),
+                        updated_at: now.toISOString(),
+                        client: sampleClient,
+                      };
+                      
+                      generateContractPdf(sampleContract);
+                      toast({ title: 'Sample contract PDF generated!' });
+                    }}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Sample PDF
+                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Preview how your contracts will look with current settings
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => toast({ title: 'Settings saved successfully!' })}
+                  className="w-full md:w-auto"
+                >
+                  Save Contract Settings
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Preferences Tab */}
