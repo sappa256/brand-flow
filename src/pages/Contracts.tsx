@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DataTable } from '@/components/shared/DataTable';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import type { Contract, Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, IndianRupee } from 'lucide-react';
+import { AlertTriangle, IndianRupee, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 
 interface ContractWithClient extends Contract {
   client: Client;
@@ -17,6 +19,8 @@ interface ContractWithClient extends Contract {
 export default function Contracts() {
   const [contracts, setContracts] = useState<ContractWithClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
   useEffect(() => {
     fetchContracts();
@@ -32,6 +36,15 @@ export default function Contracts() {
       setContracts(data as ContractWithClient[]);
     }
     setIsLoading(false);
+  };
+
+  const handleAddContract = () => {
+    setSelectedContract(null);
+    setDialogOpen(true);
+  };
+
+  const handleSuccess = () => {
+    fetchContracts();
   };
 
   const getDaysUntilEnd = (endDate: string) => {
@@ -152,7 +165,15 @@ export default function Contracts() {
   });
 
   return (
-    <AppLayout title="Contracts">
+    <AppLayout
+      title="Contracts"
+      actions={
+        <Button size="sm" onClick={handleAddContract}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Contract
+        </Button>
+      }
+    >
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-card border border-border rounded-lg p-4">
@@ -185,6 +206,13 @@ export default function Contracts() {
         columns={columns}
         getRowId={(contract) => contract.id}
         emptyMessage="No contracts yet."
+      />
+
+      <ContractFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        contract={selectedContract}
+        onSuccess={handleSuccess}
       />
     </AppLayout>
   );
