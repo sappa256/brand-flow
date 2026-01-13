@@ -97,6 +97,8 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 - Priority levels (High, Normal)
 - Editor assignment
 - Month and reel number tracking
+- **Workflow Validation**: Reels cannot move to 'editing' unless shoot is completed ✨
+- **Ready for Publishing**: Automatic badge when batch has 15+ approved reels ✨
 
 ### 📅 Content Calendar
 - Schedule posts across platforms
@@ -104,6 +106,7 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 - Caption status tracking: Pending → Approved
 - Posting status: Scheduled → Posted → Missed
 - Post URL tracking
+- **Posting Validation**: Cannot mark as "Posted" unless approved reels are ready ✨
 
 ### 🔄 Monthly Cycles
 - Track monthly progress per client
@@ -111,6 +114,18 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 - Client satisfaction tracking: Happy, Neutral, Risk
 - Issues documentation
 - Cycle status: Planned → In Production → Publishing Live → Completed
+- **Cycle Delay Tracking**: Mark cycles as delayed with reason ✨
+- **Completion Validation**: Cannot complete until reels_posted ≥ reels_planned ✨
+
+### 👤 Owner Dashboard ✨ (NEW)
+- Admin-only operational command center
+- **Today's Shoots**: View and access scheduled shoots
+- **Stuck Reels**: Identify reels in editing for 48+ hours
+- **Posts Due Today**: Track content scheduled for posting
+- **Missed Posts (Last 7 Days)**: Monitor posting failures
+- **Ending Contracts**: Alert for contracts in final month
+- **At Risk Clients**: Clients with health_status = 'risk'
+- **Delayed Monthly Cycles**: Cycles past end date not completed
 
 ### 📁 Files
 - File management and organization
@@ -175,7 +190,16 @@ src/
 ├── components/
 │   ├── ui/              # shadcn/ui components
 │   ├── layout/          # App layout components
-│   ├── shared/          # Reusable components (DataTable, KanbanBoard, etc.)
+│   ├── shared/          # Reusable components
+│   │   ├── DataTable.tsx
+│   │   ├── KanbanBoard.tsx
+│   │   ├── StatsCard.tsx
+│   │   ├── StatusBadge.tsx
+│   │   ├── HealthBadge.tsx          # ✨ Client health indicator
+│   │   ├── ContractWarningBadge.tsx # ✨ Contract expiry alerts
+│   │   ├── DelayedCycleBadge.tsx    # ✨ Delayed cycle indicator
+│   │   ├── ValidationMessage.tsx    # ✨ Form validation messages
+│   │   └── FileUpload.tsx
 │   ├── calendar/        # Calendar components
 │   ├── clients/         # Client form dialogs
 │   ├── contracts/       # Contract form dialogs
@@ -185,13 +209,31 @@ src/
 │   ├── reels/           # Reel form dialogs
 │   ├── shoots/          # Shoot form dialogs
 │   └── strategy/        # Strategy form dialogs
-├── hooks/               # Custom React hooks
+├── hooks/
+│   ├── useAuth.tsx              # Authentication hook
+│   ├── useWorkflowValidation.ts # ✨ Workflow validation logic
+│   ├── use-toast.ts             # Toast notifications
+│   └── use-mobile.tsx           # Mobile detection
 ├── integrations/
 │   └── supabase/        # Supabase client and types
 ├── lib/
 │   ├── utils.ts         # Utility functions
 │   └── contractPdfGenerator.ts  # PDF generation logic
-├── pages/               # Route pages
+├── pages/
+│   ├── Dashboard.tsx
+│   ├── OwnerDashboard.tsx       # ✨ Admin operational dashboard
+│   ├── Leads.tsx
+│   ├── Proposals.tsx
+│   ├── Clients.tsx
+│   ├── Contracts.tsx
+│   ├── Strategy.tsx
+│   ├── Shoots.tsx
+│   ├── Reels.tsx
+│   ├── Calendar.tsx
+│   ├── Cycles.tsx
+│   ├── Files.tsx
+│   ├── Settings.tsx
+│   └── Auth.tsx
 ├── types/
 │   └── crm.ts           # TypeScript type definitions
 └── main.tsx             # App entry point
@@ -260,6 +302,38 @@ Built with **shadcn/ui** including:
 - Role-based access control
 - Secure authentication via Supabase Auth
 - Protected API routes
+- **Anonymous Access Denial**: Explicit RLS policies to block unauthenticated access ✨
+- **Data Protection**: All sensitive tables protected with restrictive policies ✨
+
+---
+
+## 🔄 Workflow Hardening ✨ (NEW)
+
+### Validation Rules
+| Rule | Description |
+|------|-------------|
+| Shoot → Editing | Reels can only move to 'editing' after shoot is 'completed' |
+| Editing → Posting | Posts can only be marked 'posted' when approved reels are ready |
+| Cycle Completion | Cycles can only be 'completed' when reels_posted ≥ reels_planned |
+| Batch Publishing | Automatically marks reels ready when 15+ approved in batch |
+
+### Health & Warning Indicators
+| Indicator | Description |
+|-----------|-------------|
+| Client Health | Calculated based on missed posts, pending shoots, incomplete cycles |
+| Contract Warning | Visual alerts when contract is in final month |
+| Delayed Cycle | Badge showing cycles past end date with delay reason |
+
+### Shared Components
+- `HealthBadge`: Visual health status indicator (good/watch/risk)
+- `ContractWarningBadge`: Contract expiry alerts (warning/critical)
+- `DelayedCycleBadge`: Delayed cycle indicator with tooltip
+- `ValidationMessage`: Contextual error/warning/info messages
+- `StatusBadge`: Generic status display component
+
+### Custom Hooks
+- `useWorkflowValidation`: Centralized validation logic for all workflow rules
+- `useAuth`: Authentication state and role checking
 
 ---
 
