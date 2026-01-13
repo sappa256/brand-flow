@@ -527,6 +527,7 @@ export default function Settings() {
                         brand_name: 'Sample Brand',
                         plan_type: 'accelerator' as PlanType,
                         status: 'active',
+                        health_status: 'good',
                         start_date: now.toISOString().split('T')[0],
                         end_date: endDate.toISOString().split('T')[0],
                         current_contract_month: 1,

@@ -13,6 +13,7 @@ import {
   LogOut,
   Settings,
   FolderOpen,
+  Command,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -40,6 +41,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },
+  { title: 'Owner Ops', href: '/owner-dashboard', icon: Command, roles: ['admin'] },
   { title: 'Leads', href: '/leads', icon: Users, roles: ['admin', 'sales'] },
   { title: 'Proposals', href: '/proposals', icon: FileText, roles: ['admin', 'sales'] },
   { title: 'Clients', href: '/clients', icon: Building2, roles: ['admin', 'sales', 'strategy'] },

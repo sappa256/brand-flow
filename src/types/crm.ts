@@ -15,6 +15,7 @@ export type ClientStatus = 'active' | 'paused' | 'at_risk' | 'completed';
 export type ContractStatus = 'active' | 'ending_soon' | 'renewed' | 'closed';
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
 export type RenewalProbability = 'high' | 'medium' | 'low';
+export type HealthStatus = 'good' | 'watch' | 'risk';
 
 export type StrategyStatus = 'pending' | 'strategy_call_done' | 'approved';
 export type ShootStatus = 'not_scheduled' | 'dates_fixed' | 'completed' | 'pending_client';
@@ -103,6 +104,7 @@ export interface Client {
   end_date: string | null;
   current_contract_month: number;
   status: ClientStatus;
+  health_status: HealthStatus;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -169,6 +171,7 @@ export interface Reel {
   editor_id: string | null;
   batch: BatchType | null;
   priority: PriorityType | null;
+  ready_for_publishing: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -204,6 +207,8 @@ export interface MonthlyCycle {
   issues_faced: string | null;
   client_satisfaction: ClientSatisfaction | null;
   status: CycleStatus;
+  cycle_delay_reason: string | null;
+  is_delayed: boolean;
   created_at: string;
   updated_at: string;
   // Joined data
