@@ -711,6 +711,7 @@ export type Database = {
         Args: { start_date: string }
         Returns: number
       }
+      check_editing_delays: { Args: never; Returns: undefined }
       count_approved_reels: {
         Args: { p_client_id: string; p_month_number: number }
         Returns: number
