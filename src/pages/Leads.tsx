@@ -150,6 +150,7 @@ export default function Leads() {
         renderItem={renderLeadCard}
         emptyMessage="No leads"
         onItemMove={handleLeadMove}
+        onRefresh={fetchLeads}
       />
 
       <LeadFormDialog

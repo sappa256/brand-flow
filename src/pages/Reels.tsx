@@ -228,6 +228,7 @@ export default function Reels() {
         renderItem={renderReelCard}
         emptyMessage="No reels"
         onItemMove={handleReelMove}
+        onRefresh={fetchData}
       />
 
       <ReelFormDialog

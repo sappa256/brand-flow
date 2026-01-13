@@ -22,6 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { GripVertical } from 'lucide-react';
+import { PullToRefreshWrapper } from './PullToRefreshWrapper';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface KanbanColumn {
   id: string;
@@ -38,6 +40,7 @@ interface KanbanBoardProps<T> {
   getItemId: (item: T) => string;
   emptyMessage?: string;
   onItemMove?: (itemId: string, newColumn: string) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 interface SortableItemProps {
@@ -150,7 +153,9 @@ export function KanbanBoard<T>({
   getItemId,
   emptyMessage = 'No items',
   onItemMove,
+  onRefresh,
 }: KanbanBoardProps<T>) {
+  const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<string | null>(null);
 
@@ -237,7 +242,7 @@ export function KanbanBoard<T>({
     return acc;
   }, {} as Record<string, { id: string; element: ReactNode; item: T }[]>);
 
-  return (
+  const boardContent = (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -266,4 +271,15 @@ export function KanbanBoard<T>({
       </DragOverlay>
     </DndContext>
   );
+
+  // Wrap with pull-to-refresh on mobile if onRefresh is provided
+  if (isMobile && onRefresh) {
+    return (
+      <PullToRefreshWrapper onRefresh={onRefresh}>
+        {boardContent}
+      </PullToRefreshWrapper>
+    );
+  }
+
+  return boardContent;
 }

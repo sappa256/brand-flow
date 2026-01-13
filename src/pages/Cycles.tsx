@@ -226,6 +226,7 @@ export default function Cycles() {
             renderItem={renderCard}
             emptyMessage="No cycles"
             onItemMove={(id, newStatus) => updateStatus.mutate({ id, status: newStatus as CycleStatus })}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['monthly_cycles'] })}
           />
         )}
       </div>

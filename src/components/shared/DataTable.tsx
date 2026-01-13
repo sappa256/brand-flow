@@ -8,6 +8,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PullToRefreshWrapper } from './PullToRefreshWrapper';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Column<T> {
   key: string;
@@ -23,6 +25,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   getRowId: (item: T) => string;
   onRowClick?: (item: T) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export function DataTable<T>({
@@ -32,7 +35,10 @@ export function DataTable<T>({
   emptyMessage = 'No data available',
   getRowId,
   onRowClick,
+  onRefresh,
 }: DataTableProps<T>) {
+  const isMobile = useIsMobile();
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -43,7 +49,7 @@ export function DataTable<T>({
     );
   }
 
-  return (
+  const tableContent = (
     <div className="rounded-md border overflow-x-auto">
       <Table className="min-w-[640px]">
         <TableHeader>
@@ -81,4 +87,15 @@ export function DataTable<T>({
       </Table>
     </div>
   );
+
+  // Wrap with pull-to-refresh on mobile if onRefresh is provided
+  if (isMobile && onRefresh) {
+    return (
+      <PullToRefreshWrapper onRefresh={onRefresh}>
+        {tableContent}
+      </PullToRefreshWrapper>
+    );
+  }
+
+  return tableContent;
 }

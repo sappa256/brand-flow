@@ -186,6 +186,7 @@ export default function Strategy() {
             renderItem={renderCard}
             emptyMessage="No strategies"
             onItemMove={(id, newStatus) => updateStatus.mutate({ id, status: newStatus as StrategyStatus })}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['strategies'] })}
           />
         )}
       </div>
