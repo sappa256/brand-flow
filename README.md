@@ -117,7 +117,7 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 - **Cycle Delay Tracking**: Mark cycles as delayed with reason ✨
 - **Completion Validation**: Cannot complete until reels_posted ≥ reels_planned ✨
 
-### 👤 Owner Dashboard ✨ (NEW)
+### 👤 Owner Dashboard ✨
 - Admin-only operational command center
 - **Today's Shoots**: View and access scheduled shoots
 - **Stuck Reels**: Identify reels in editing for 48+ hours
@@ -131,19 +131,30 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 - File management and organization
 - Upload capabilities
 
-### ⚙️ Settings
-- **General Settings**
-  - User profile management
-  - Theme preferences
+### ⚙️ Settings ✨ (Enhanced)
+- **Team Management Tab**
+  - View all team members with roles
+  - Role badges with color coding
+  - Invite new team members
+  - Role assignment and management
+  
+- **Roles & Permissions Tab**
+  - Define role-based access levels
+  - Admin, Sales, Strategy, Editor, Social Media roles
+  - Visual permission cards
 
-- **Notifications**
-  - Email and push notification preferences
+- **Notifications Tab** ✨
+  - Email notification preferences toggle
+  - Granular notification controls:
+    - Proposal Accepted
+    - Shoot Scheduled
+    - Editing Delays
+    - Missed Posts
+    - Contract Renewal
+    - Client at Risk
+  - Notification history/log with status indicators
 
-- **Security**
-  - Password management
-  - Two-factor authentication options
-
-- **Contract Settings** ✨
+- **Contracts Tab** ✨
   - **Company Branding**: Company name, tagline, contact details, address
   - **Bank & Tax Details**: Bank name, account number, IFSC code, GST number
   - **Contract Terms & Policies**: 
@@ -154,6 +165,49 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
     - Revision policy
   - **Preview Contract**: Download sample PDF with current settings
 
+- **Preferences Tab**
+  - Date format selection
+  - Currency selection (INR, USD, EUR)
+  - First day of week preference
+  - Theme toggle (Light/Dark mode)
+
+### 📧 Email Notifications System ✨ (NEW)
+- **Database Tables**
+  - `email_notifications`: Stores all notification records
+  - `user_notification_preferences`: User-specific notification settings
+
+- **Edge Function**: `send-notifications`
+  - Processes pending notifications
+  - Integrates with Resend API for email delivery
+  - Tracks sent/failed status
+
+- **Notification Types**
+  - Proposal accepted alerts
+  - Shoot scheduled reminders
+  - Editing delay warnings
+  - Missed post notifications
+  - Contract renewal alerts
+  - Client at-risk warnings
+
+### 📱 Mobile Responsiveness ✨ (NEW)
+- **Fully Responsive Design** across all pages
+- **Adaptive Layouts**
+  - Sidebar collapses on mobile
+  - Tables with horizontal scroll
+  - Stacked layouts for forms
+  - Touch-friendly buttons and controls
+
+- **Settings Page Mobile Optimization**
+  - Team table with hidden columns and compact display
+  - Abbreviated role badges on mobile
+  - Stacked notification toggles
+  - Full-width buttons on small screens
+  - Responsive grid layouts (1-col → 2-col → 3-col)
+
+- **Pull-to-Refresh Support**
+  - Custom `PullToRefreshWrapper` component
+  - `usePullToRefresh` hook for data refresh
+
 ---
 
 ## 🗄️ Database Schema
@@ -163,6 +217,8 @@ A comprehensive Customer Relationship Management system built for Montaz Medias,
 |-------|-------------|
 | `profiles` | User profile information |
 | `user_roles` | Role assignments for users |
+| `user_notification_preferences` | User notification settings ✨ |
+| `email_notifications` | Notification history and queue ✨ |
 | `leads` | Potential client information |
 | `proposals` | Proposal documents for leads |
 | `clients` | Active client records |
@@ -190,16 +246,19 @@ src/
 ├── components/
 │   ├── ui/              # shadcn/ui components
 │   ├── layout/          # App layout components
+│   │   ├── AppLayout.tsx
+│   │   └── AppSidebar.tsx
 │   ├── shared/          # Reusable components
 │   │   ├── DataTable.tsx
 │   │   ├── KanbanBoard.tsx
 │   │   ├── StatsCard.tsx
 │   │   ├── StatusBadge.tsx
-│   │   ├── HealthBadge.tsx          # ✨ Client health indicator
-│   │   ├── ContractWarningBadge.tsx # ✨ Contract expiry alerts
-│   │   ├── DelayedCycleBadge.tsx    # ✨ Delayed cycle indicator
-│   │   ├── ValidationMessage.tsx    # ✨ Form validation messages
-│   │   └── FileUpload.tsx
+│   │   ├── HealthBadge.tsx          # Client health indicator
+│   │   ├── ContractWarningBadge.tsx # Contract expiry alerts
+│   │   ├── DelayedCycleBadge.tsx    # Delayed cycle indicator
+│   │   ├── ValidationMessage.tsx    # Form validation messages
+│   │   ├── FileUpload.tsx
+│   │   └── PullToRefreshWrapper.tsx # ✨ Mobile pull-to-refresh
 │   ├── calendar/        # Calendar components
 │   ├── clients/         # Client form dialogs
 │   ├── contracts/       # Contract form dialogs
@@ -211,7 +270,8 @@ src/
 │   └── strategy/        # Strategy form dialogs
 ├── hooks/
 │   ├── useAuth.tsx              # Authentication hook
-│   ├── useWorkflowValidation.ts # ✨ Workflow validation logic
+│   ├── useWorkflowValidation.ts # Workflow validation logic
+│   ├── usePullToRefresh.tsx     # ✨ Pull-to-refresh hook
 │   ├── use-toast.ts             # Toast notifications
 │   └── use-mobile.tsx           # Mobile detection
 ├── integrations/
@@ -221,7 +281,7 @@ src/
 │   └── contractPdfGenerator.ts  # PDF generation logic
 ├── pages/
 │   ├── Dashboard.tsx
-│   ├── OwnerDashboard.tsx       # ✨ Admin operational dashboard
+│   ├── OwnerDashboard.tsx       # Admin operational dashboard
 │   ├── Leads.tsx
 │   ├── Proposals.tsx
 │   ├── Clients.tsx
@@ -232,11 +292,19 @@ src/
 │   ├── Calendar.tsx
 │   ├── Cycles.tsx
 │   ├── Files.tsx
-│   ├── Settings.tsx
-│   └── Auth.tsx
+│   ├── Settings.tsx             # ✨ Enhanced with 5 tabs
+│   ├── Auth.tsx
+│   └── NotFound.tsx
 ├── types/
 │   └── crm.ts           # TypeScript type definitions
 └── main.tsx             # App entry point
+
+supabase/
+├── config.toml          # Supabase configuration
+├── functions/
+│   └── send-notifications/  # ✨ Email notification edge function
+│       └── index.ts
+└── migrations/          # Database migrations
 ```
 
 ---
@@ -278,6 +346,7 @@ npm run dev
 | `lucide-react` | Icon library |
 | `zod` | Schema validation |
 | `react-hook-form` | Form handling |
+| `sonner` | Toast notifications |
 
 ---
 
@@ -292,6 +361,9 @@ Built with **shadcn/ui** including:
 - Toast notifications
 - Date pickers
 - Select dropdowns
+- Tabs for organized content
+- Switches for toggle preferences
+- Cards for grouped content
 - And more...
 
 ---
@@ -302,12 +374,13 @@ Built with **shadcn/ui** including:
 - Role-based access control
 - Secure authentication via Supabase Auth
 - Protected API routes
-- **Anonymous Access Denial**: Explicit RLS policies to block unauthenticated access ✨
-- **Data Protection**: All sensitive tables protected with restrictive policies ✨
+- **Anonymous Access Denial**: Explicit RLS policies to block unauthenticated access
+- **Data Protection**: All sensitive tables protected with restrictive policies
+- **Security Definer Functions**: `has_role()` and `has_any_role()` for secure role checks
 
 ---
 
-## 🔄 Workflow Hardening ✨ (NEW)
+## 🔄 Workflow Hardening
 
 ### Validation Rules
 | Rule | Description |
@@ -330,10 +403,25 @@ Built with **shadcn/ui** including:
 - `DelayedCycleBadge`: Delayed cycle indicator with tooltip
 - `ValidationMessage`: Contextual error/warning/info messages
 - `StatusBadge`: Generic status display component
+- `PullToRefreshWrapper`: Mobile pull-to-refresh functionality
 
 ### Custom Hooks
 - `useWorkflowValidation`: Centralized validation logic for all workflow rules
 - `useAuth`: Authentication state and role checking
+- `usePullToRefresh`: Mobile pull-to-refresh gesture handling
+- `useMobile`: Mobile device detection
+
+---
+
+## 📱 Mobile Support
+
+The application is fully responsive with:
+- **Collapsible Sidebar**: Hamburger menu on mobile devices
+- **Responsive Tables**: Horizontal scroll with hidden columns on small screens
+- **Stacked Forms**: Form fields stack vertically on mobile
+- **Touch-Friendly**: Larger tap targets for mobile users
+- **Pull-to-Refresh**: Native-like refresh gesture support
+- **Adaptive Typography**: Text sizes adjust based on screen width
 
 ---
 
