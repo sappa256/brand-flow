@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import {
   Users,
   FileText,
@@ -31,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { AppRole } from '@/types/crm';
+import logo from '@/assets/logo.png';
 
 interface NavItem {
   title: string;
@@ -57,6 +59,7 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const { profile, roles, signOut, hasAnyRole } = useAuth();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const filteredNavItems = navItems.filter(item => hasAnyRole(item.roles));
 
@@ -68,38 +71,84 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-primary-foreground font-bold text-lg shadow-glow">
-            M
+        <Link 
+          to="/" 
+          className="flex items-center gap-3 group cursor-pointer"
+        >
+          <div className="relative overflow-hidden rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <img 
+              src={logo} 
+              alt="Montaz Medias Logo" 
+              className="h-10 w-10 object-contain drop-shadow-lg transition-all duration-300 group-hover:drop-shadow-2xl"
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
           </div>
-          <div>
-            <h1 className="font-semibold text-sidebar-foreground">Montaz Medias</h1>
+          <div className="transition-all duration-300 group-hover:translate-x-1">
+            <h1 className="font-semibold text-sidebar-foreground transition-colors duration-300 group-hover:text-primary">
+              Montaz Medias
+            </h1>
             <p className="text-xs text-muted-foreground">CRM Dashboard</p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
+          <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4 animate-fade-in">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === item.href}
-                    className="transition-colors"
+              {filteredNavItems.map((item, index) => {
+                const isActive = location.pathname === item.href;
+                const isHovered = hoveredItem === item.href;
+                
+                return (
+                  <SidebarMenuItem 
+                    key={item.href}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <Link to={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={`
+                        relative overflow-hidden transition-all duration-300 ease-out
+                        hover:translate-x-1 hover:bg-sidebar-accent
+                        ${isActive ? 'bg-primary/10 text-primary font-medium' : ''}
+                      `}
+                      onMouseEnter={() => setHoveredItem(item.href)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                    >
+                      <Link to={item.href} className="relative z-10 flex items-center gap-3">
+                        <item.icon 
+                          className={`
+                            h-4 w-4 transition-all duration-300
+                            ${isHovered || isActive ? 'scale-110 text-primary' : ''}
+                            ${isHovered ? 'rotate-6' : ''}
+                          `} 
+                        />
+                        <span className={`
+                          transition-all duration-300
+                          ${isHovered ? 'translate-x-0.5' : ''}
+                        `}>
+                          {item.title}
+                        </span>
+                        
+                        {/* Active indicator line */}
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full animate-scale-in" />
+                        )}
+                        
+                        {/* Hover ripple effect */}
+                        {isHovered && !isActive && (
+                          <span className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent animate-fade-in" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -112,10 +161,30 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.pathname === '/settings'}>
-                    <Link to="/settings">
-                      <Settings className="h-4 w-4" />
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === '/settings'}
+                    className={`
+                      relative overflow-hidden transition-all duration-300 ease-out
+                      hover:translate-x-1 hover:bg-sidebar-accent
+                      ${location.pathname === '/settings' ? 'bg-primary/10 text-primary font-medium' : ''}
+                    `}
+                    onMouseEnter={() => setHoveredItem('/settings')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Link to="/settings" className="relative z-10 flex items-center gap-3">
+                      <Settings 
+                        className={`
+                          h-4 w-4 transition-all duration-500
+                          ${hoveredItem === '/settings' ? 'rotate-90 text-primary' : ''}
+                          ${location.pathname === '/settings' ? 'text-primary' : ''}
+                        `} 
+                      />
                       <span>Settings</span>
+                      
+                      {location.pathname === '/settings' && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full animate-scale-in" />
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -126,13 +195,13 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+        <div className="flex items-center gap-3 group">
+          <Avatar className="h-9 w-9 transition-all duration-300 group-hover:scale-105 group-hover:ring-2 group-hover:ring-primary/30">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm transition-colors duration-300 group-hover:bg-primary/20">
               {getInitials(profile?.full_name)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 transition-all duration-300 group-hover:translate-x-0.5">
             <p className="text-sm font-medium truncate text-sidebar-foreground">
               {profile?.full_name || 'User'}
             </p>
@@ -144,7 +213,7 @@ export function AppSidebar() {
             variant="ghost"
             size="icon"
             onClick={signOut}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:rotate-6"
           >
             <LogOut className="h-4 w-4" />
           </Button>
