@@ -55,7 +55,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<{ s
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Montaz Medias CRM <onboarding@resend.dev>",
+        from: "Montaz Medias CRM <notifications@montazmedias.in>",
         to: [to],
         subject: subject,
         html: html,
