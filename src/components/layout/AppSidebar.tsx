@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useTheme } from 'next-themes';
 import {
   Users,
   FileText,
@@ -15,6 +16,8 @@ import {
   Settings,
   FolderOpen,
   Command,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,6 +34,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AppRole } from '@/types/crm';
 import logo from '@/assets/logo.png';
 
@@ -59,7 +63,12 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const { profile, roles, signOut, hasAnyRole } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const filteredNavItems = navItems.filter(item => hasAnyRole(item.roles));
 
@@ -194,7 +203,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
         <div className="flex items-center gap-3 group">
           <Avatar className="h-9 w-9 transition-all duration-300 group-hover:scale-105 group-hover:ring-2 group-hover:ring-primary/30">
             <AvatarFallback className="bg-primary/10 text-primary text-sm transition-colors duration-300 group-hover:bg-primary/20">
@@ -209,14 +218,40 @@ export function AppSidebar() {
               {roles[0]?.replace('_', ' ') || 'No role'}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={signOut}
-            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:rotate-6"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300 hover:scale-110"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all duration-500 dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all duration-500 dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:rotate-6"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Sign out</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </SidebarFooter>
     </Sidebar>
