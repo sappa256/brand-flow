@@ -206,6 +206,48 @@ export type Database = {
           },
         ]
       }
+      email_notifications: {
+        Row: {
+          created_at: string
+          email: string
+          error_message: string | null
+          event_type: string
+          id: string
+          is_sent: boolean
+          message: string
+          role: string | null
+          sent_at: string | null
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          is_sent?: boolean
+          message: string
+          role?: string | null
+          sent_at?: string | null
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          is_sent?: boolean
+          message?: string
+          role?: string | null
+          sent_at?: string | null
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           assigned_sales_id: string | null
@@ -596,6 +638,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          client_at_risk: boolean
+          contract_renewal: boolean
+          created_at: string
+          editing_delay: boolean
+          email_enabled: boolean
+          id: string
+          missed_post: boolean
+          proposal_accepted: boolean
+          shoot_scheduled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_at_risk?: boolean
+          contract_renewal?: boolean
+          created_at?: string
+          editing_delay?: boolean
+          email_enabled?: boolean
+          id?: string
+          missed_post?: boolean
+          proposal_accepted?: boolean
+          shoot_scheduled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_at_risk?: boolean
+          contract_renewal?: boolean
+          created_at?: string
+          editing_delay?: boolean
+          email_enabled?: boolean
+          id?: string
+          missed_post?: boolean
+          proposal_accepted?: boolean
+          shoot_scheduled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

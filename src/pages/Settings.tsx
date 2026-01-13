@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -16,11 +16,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download } from 'lucide-react';
+import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download, Bell } from 'lucide-react';
 import type { AppRole } from '@/types/crm';
 import { Navigate } from 'react-router-dom';
 import { generateContractPdf } from '@/lib/contractPdfGenerator';
 import type { Contract, Client, PlanType } from '@/types/crm';
+
+interface NotificationPreferences {
+  email_enabled: boolean;
+  proposal_accepted: boolean;
+  contract_renewal: boolean;
+  shoot_scheduled: boolean;
+  editing_delay: boolean;
+  missed_post: boolean;
+  client_at_risk: boolean;
+}
 
 const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',
@@ -46,14 +56,87 @@ interface TeamMember {
   roles: AppRole[];
 }
 
+// Notification Log Table Component
+function NotificationLogTable({ userId }: { userId?: string }) {
+  const { data: notifications, isLoading } = useQuery({
+    queryKey: ['notification-log', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from('email_notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!notifications || notifications.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-4">No notifications sent yet</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Event</TableHead>
+          <TableHead>Subject</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Date</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {notifications.map((notification: any) => (
+          <TableRow key={notification.id}>
+            <TableCell className="capitalize">
+              {notification.event_type.replace(/_/g, ' ')}
+            </TableCell>
+            <TableCell className="max-w-[200px] truncate">
+              {notification.subject}
+            </TableCell>
+            <TableCell>
+              <Badge variant={notification.is_sent ? 'default' : 'secondary'}>
+                {notification.is_sent ? 'Sent' : 'Pending'}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {new Date(notification.created_at).toLocaleDateString()}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export default function Settings() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>('sales');
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
+    email_enabled: true,
+    proposal_accepted: true,
+    contract_renewal: true,
+    shoot_scheduled: true,
+    editing_delay: true,
+    missed_post: true,
+    client_at_risk: true,
+  });
   
   // Contract settings state
   const [companySettings, setCompanySettings] = useState({
@@ -75,6 +158,61 @@ export default function Settings() {
     deliverables: 'All content deliverables remain property of Montaz Medias until full payment is received. Upon payment, perpetual usage rights are granted to the Client.',
     confidentiality: 'Both parties agree to maintain confidentiality of proprietary information shared during the engagement.',
     revisionPolicy: 'Each reel includes up to 2 rounds of revisions. Additional revisions will be billed at ₹2,000 per round.',
+  });
+
+  // Fetch notification preferences
+  const { data: savedNotificationPrefs, isLoading: isLoadingPrefs } = useQuery({
+    queryKey: ['notification-preferences', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_notification_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Update local state when saved preferences load
+  useEffect(() => {
+    if (savedNotificationPrefs) {
+      setNotificationPrefs({
+        email_enabled: savedNotificationPrefs.email_enabled,
+        proposal_accepted: savedNotificationPrefs.proposal_accepted,
+        contract_renewal: savedNotificationPrefs.contract_renewal,
+        shoot_scheduled: savedNotificationPrefs.shoot_scheduled,
+        editing_delay: savedNotificationPrefs.editing_delay,
+        missed_post: savedNotificationPrefs.missed_post,
+        client_at_risk: savedNotificationPrefs.client_at_risk,
+      });
+    }
+  }, [savedNotificationPrefs]);
+
+  // Save notification preferences mutation
+  const saveNotificationPrefsMutation = useMutation({
+    mutationFn: async (prefs: NotificationPreferences) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('user_notification_preferences')
+        .upsert({
+          user_id: user.id,
+          ...prefs,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+      toast({ title: 'Notification preferences saved' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to save preferences', description: error.message, variant: 'destructive' });
+    },
   });
 
   // Check admin access
@@ -180,7 +318,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="team" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[625px]">
             <TabsTrigger value="team" className="gap-2">
               <Users className="h-4 w-4" />
               Team
@@ -188,6 +326,10 @@ export default function Settings() {
             <TabsTrigger value="roles" className="gap-2">
               <Shield className="h-4 w-4" />
               Roles
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
             </TabsTrigger>
             <TabsTrigger value="contracts" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -335,6 +477,141 @@ export default function Settings() {
                 );
               })}
             </div>
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Email Notification Preferences</CardTitle>
+                <CardDescription>
+                  Configure which email notifications you want to receive
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isLoadingPrefs ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between py-4 border-b">
+                      <div className="space-y-0.5">
+                        <Label className="text-base font-semibold">Email Notifications</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Master toggle to enable or disable all email notifications
+                        </p>
+                      </div>
+                      <Switch 
+                        checked={notificationPrefs.email_enabled}
+                        onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, email_enabled: checked }))}
+                      />
+                    </div>
+
+                    <div className={`space-y-4 ${!notificationPrefs.email_enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Proposal Accepted</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when a proposal is accepted by a lead
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.proposal_accepted}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, proposal_accepted: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Contract Renewal Alerts</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when contracts enter month 5 (renewal phase)
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.contract_renewal}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, contract_renewal: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Shoot Scheduled</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when a new shoot is scheduled
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.shoot_scheduled}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, shoot_scheduled: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Editing Delay Alerts</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when reels are stuck in editing for over 48 hours
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.editing_delay}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, editing_delay: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Missed Post Alerts</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when a scheduled post is missed
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.missed_post}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, missed_post: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Client At Risk Alerts</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Get notified when a client's health status changes to "at risk"
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={notificationPrefs.client_at_risk}
+                          onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, client_at_risk: checked }))}
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => saveNotificationPrefsMutation.mutate(notificationPrefs)}
+                      disabled={saveNotificationPrefsMutation.isPending}
+                      className="w-full md:w-auto"
+                    >
+                      {saveNotificationPrefsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Save Notification Preferences
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Notification Log</CardTitle>
+                <CardDescription>
+                  Recent email notifications sent to your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <NotificationLogTable userId={user?.id} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Contracts Tab */}
