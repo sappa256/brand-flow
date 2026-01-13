@@ -450,17 +450,17 @@ export default function Settings() {
 
           {/* Roles Overview Tab */}
           <TabsContent value="roles" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {(Object.entries(ROLE_LABELS) as [AppRole, string][]).map(([role, label]) => {
                 const membersWithRole = teamMembers.filter(m => m.roles.includes(role));
                 return (
                   <Card key={role}>
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{label}</CardTitle>
+                        <CardTitle className="text-base sm:text-lg">{label}</CardTitle>
                         <Badge className={ROLE_COLORS[role]}>{membersWithRole.length}</Badge>
                       </div>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         {role === 'admin' && 'Full access to all features and settings'}
                         {role === 'sales' && 'Manage leads, proposals, and contracts'}
                         {role === 'strategy' && 'Handle content strategy and planning'}
@@ -477,16 +477,16 @@ export default function Settings() {
                                 {getInitials(member.full_name)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{member.full_name}</span>
+                            <span className="text-xs sm:text-sm truncate">{member.full_name}</span>
                           </div>
                         ))}
                         {membersWithRole.length > 3 && (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs sm:text-sm text-muted-foreground">
                             +{membersWithRole.length - 3} more
                           </span>
                         )}
                         {membersWithRole.length === 0 && (
-                          <span className="text-sm text-muted-foreground">No members</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground">No members</span>
                         )}
                       </div>
                     </CardContent>
@@ -512,10 +512,10 @@ export default function Settings() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between py-4 border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-b">
                       <div className="space-y-0.5">
                         <Label className="text-base font-semibold">Email Notifications</Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Master toggle to enable or disable all email notifications
                         </p>
                       </div>
@@ -526,10 +526,10 @@ export default function Settings() {
                     </div>
 
                     <div className={`space-y-4 ${!notificationPrefs.email_enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Proposal Accepted</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Proposal Accepted</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when a proposal is accepted by a lead
                           </p>
                         </div>
@@ -539,10 +539,10 @@ export default function Settings() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Contract Renewal Alerts</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Contract Renewal Alerts</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when contracts enter month 5 (renewal phase)
                           </p>
                         </div>
@@ -552,10 +552,10 @@ export default function Settings() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Shoot Scheduled</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Shoot Scheduled</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when a new shoot is scheduled
                           </p>
                         </div>
@@ -565,10 +565,10 @@ export default function Settings() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Editing Delay Alerts</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Editing Delay Alerts</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when reels are stuck in editing for over 48 hours
                           </p>
                         </div>
@@ -578,10 +578,10 @@ export default function Settings() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Missed Post Alerts</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Missed Post Alerts</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when a scheduled post is missed
                           </p>
                         </div>
@@ -591,10 +591,10 @@ export default function Settings() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="space-y-0.5">
-                          <Label>Client At Risk Alerts</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <Label className="text-sm">Client At Risk Alerts</Label>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Get notified when a client's health status changes to "at risk"
                           </p>
                         </div>
@@ -642,9 +642,9 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
+                    <Label htmlFor="companyName" className="text-sm">Company Name</Label>
                     <Input 
                       id="companyName" 
                       value={companySettings.companyName}
@@ -652,7 +652,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tagline">Tagline</Label>
+                    <Label htmlFor="tagline" className="text-sm">Tagline</Label>
                     <Input 
                       id="tagline" 
                       value={companySettings.tagline}
@@ -660,7 +660,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="companyEmail">Email</Label>
+                    <Label htmlFor="companyEmail" className="text-sm">Email</Label>
                     <Input 
                       id="companyEmail" 
                       type="email"
@@ -669,7 +669,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="companyPhone">Phone</Label>
+                    <Label htmlFor="companyPhone" className="text-sm">Phone</Label>
                     <Input 
                       id="companyPhone" 
                       value={companySettings.phone}
@@ -677,7 +677,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
+                    <Label htmlFor="website" className="text-sm">Website</Label>
                     <Input 
                       id="website" 
                       value={companySettings.website}
@@ -685,7 +685,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
+                    <Label htmlFor="address" className="text-sm">Address</Label>
                     <Input 
                       id="address" 
                       value={companySettings.address}
@@ -705,9 +705,9 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Label htmlFor="bankName" className="text-sm">Bank Name</Label>
                     <Input 
                       id="bankName" 
                       value={companySettings.bankName}
@@ -715,7 +715,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
+                    <Label htmlFor="accountNumber" className="text-sm">Account Number</Label>
                     <Input 
                       id="accountNumber" 
                       value={companySettings.accountNumber}
@@ -723,7 +723,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ifscCode">IFSC Code</Label>
+                    <Label htmlFor="ifscCode" className="text-sm">IFSC Code</Label>
                     <Input 
                       id="ifscCode" 
                       value={companySettings.ifscCode}
@@ -731,7 +731,7 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gstNumber">GST Number</Label>
+                    <Label htmlFor="gstNumber" className="text-sm">GST Number</Label>
                     <Input 
                       id="gstNumber" 
                       value={companySettings.gstNumber}
@@ -752,46 +752,51 @@ export default function Settings() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="paymentTerms">Payment Terms</Label>
+                  <Label htmlFor="paymentTerms" className="text-sm">Payment Terms</Label>
                   <Textarea 
                     id="paymentTerms" 
                     rows={3}
+                    className="text-sm"
                     value={contractTerms.paymentTerms}
                     onChange={(e) => setContractTerms(prev => ({ ...prev, paymentTerms: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cancellationPolicy">Cancellation Policy</Label>
+                  <Label htmlFor="cancellationPolicy" className="text-sm">Cancellation Policy</Label>
                   <Textarea 
                     id="cancellationPolicy" 
                     rows={3}
+                    className="text-sm"
                     value={contractTerms.cancellationPolicy}
                     onChange={(e) => setContractTerms(prev => ({ ...prev, cancellationPolicy: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="deliverables">Deliverables & IP Rights</Label>
+                  <Label htmlFor="deliverables" className="text-sm">Deliverables & IP Rights</Label>
                   <Textarea 
                     id="deliverables" 
                     rows={3}
+                    className="text-sm"
                     value={contractTerms.deliverables}
                     onChange={(e) => setContractTerms(prev => ({ ...prev, deliverables: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confidentiality">Confidentiality Clause</Label>
+                  <Label htmlFor="confidentiality" className="text-sm">Confidentiality Clause</Label>
                   <Textarea 
                     id="confidentiality" 
                     rows={2}
+                    className="text-sm"
                     value={contractTerms.confidentiality}
                     onChange={(e) => setContractTerms(prev => ({ ...prev, confidentiality: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="revisionPolicy">Revision Policy</Label>
+                  <Label htmlFor="revisionPolicy" className="text-sm">Revision Policy</Label>
                   <Textarea 
                     id="revisionPolicy" 
                     rows={2}
+                    className="text-sm"
                     value={contractTerms.revisionPolicy}
                     onChange={(e) => setContractTerms(prev => ({ ...prev, revisionPolicy: e.target.value }))}
                   />
@@ -808,7 +813,7 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <Button
                     onClick={() => {
                       const now = new Date();
@@ -853,18 +858,18 @@ export default function Settings() {
                       generateContractPdf(sampleContract);
                       toast({ title: 'Sample contract PDF generated!' });
                     }}
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Download className="h-4 w-4" />
                     Download Sample PDF
                   </Button>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Preview how your contracts will look with current settings
                   </p>
                 </div>
                 <Button 
                   onClick={() => toast({ title: 'Settings saved successfully!' })}
-                  className="w-full md:w-auto"
+                  className="w-full sm:w-auto"
                 >
                   Save Contract Settings
                 </Button>
@@ -882,30 +887,30 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="text-sm">Email Notifications</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Receive email notifications for important updates
                     </p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <Label>Auto-assign Leads</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="text-sm">Auto-assign Leads</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Automatically assign new leads to sales team members
                     </p>
                   </div>
                   <Switch />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <Label>Contract Renewal Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="text-sm">Contract Renewal Alerts</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Get notified 30 days before contract expiration
                     </p>
                   </div>
@@ -922,21 +927,21 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="defaultReels">Default Reels per Month</Label>
+                    <Label htmlFor="defaultReels" className="text-sm">Default Reels per Month</Label>
                     <Input id="defaultReels" type="number" defaultValue={8} min={1} max={50} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="defaultShootDays">Default Shoot Days per Month</Label>
+                    <Label htmlFor="defaultShootDays" className="text-sm">Default Shoot Days per Month</Label>
                     <Input id="defaultShootDays" type="number" defaultValue={2} min={1} max={10} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="defaultDuration">Default Contract Duration (months)</Label>
+                    <Label htmlFor="defaultDuration" className="text-sm">Default Contract Duration (months)</Label>
                     <Input id="defaultDuration" type="number" defaultValue={6} min={1} max={24} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="defaultPlatform">Default Platform</Label>
+                    <Label htmlFor="defaultPlatform" className="text-sm">Default Platform</Label>
                     <Select defaultValue="instagram">
                       <SelectTrigger id="defaultPlatform">
                         <SelectValue />
@@ -950,7 +955,7 @@ export default function Settings() {
                     </Select>
                   </div>
                 </div>
-                <Button className="mt-4">Save Preferences</Button>
+                <Button className="mt-4 w-full sm:w-auto">Save Preferences</Button>
               </CardContent>
             </Card>
           </TabsContent>
