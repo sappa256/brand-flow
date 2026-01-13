@@ -29,7 +29,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Reel, ScriptStatus, EditStatus, BatchType, PriorityType, Profile } from '@/types/crm';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useWorkflowValidation } from '@/hooks/useWorkflowValidation';
+import { ValidationMessage } from '@/components/shared/ValidationMessage';
 
 const reelFormSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -67,7 +69,10 @@ export function ReelFormDialog({
 }: ReelFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editors, setEditors] = useState<Profile[]>([]);
+  const [shootCompleted, setShootCompleted] = useState<boolean | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const isEditing = !!reel;
+  const { canReelMoveToEditing } = useWorkflowValidation();
 
   const form = useForm<ReelFormValues>({
     resolver: zodResolver(reelFormSchema),
@@ -136,9 +141,42 @@ export function ReelFormDialog({
     }
   };
 
+  // Check shoot status when client/month changes
+  const watchClientId = form.watch('client_id');
+  const watchMonthNumber = form.watch('month_number');
+  const watchEditStatus = form.watch('edit_status');
+
+  useEffect(() => {
+    const checkShootStatus = async () => {
+      if (watchClientId && watchMonthNumber) {
+        const canEdit = await canReelMoveToEditing(watchClientId, watchMonthNumber);
+        setShootCompleted(canEdit);
+        
+        if (!canEdit && watchEditStatus !== 'not_started') {
+          setValidationError('Shoot must be completed before editing can begin');
+        } else {
+          setValidationError(null);
+        }
+      }
+    };
+    checkShootStatus();
+  }, [watchClientId, watchMonthNumber, watchEditStatus, canReelMoveToEditing]);
+
   const onSubmit = async (values: ReelFormValues) => {
     setIsSubmitting(true);
+    setValidationError(null);
+    
     try {
+      // Validate edit status transition
+      if (values.edit_status !== 'not_started') {
+        const canEdit = await canReelMoveToEditing(values.client_id, values.month_number);
+        if (!canEdit) {
+          setValidationError('Cannot set edit status: Shoot must be completed first');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const payload = {
         client_id: values.client_id,
         month_number: values.month_number,
@@ -279,7 +317,10 @@ export function ReelFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Edit Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -287,9 +328,24 @@ export function ReelFormDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="not_started">Not Started</SelectItem>
-                        <SelectItem value="editing">Editing</SelectItem>
-                        <SelectItem value="ready_for_review">Ready for Review</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem 
+                          value="editing" 
+                          disabled={shootCompleted === false}
+                        >
+                          Editing {shootCompleted === false && '(Shoot Required)'}
+                        </SelectItem>
+                        <SelectItem 
+                          value="ready_for_review"
+                          disabled={shootCompleted === false}
+                        >
+                          Ready for Review {shootCompleted === false && '(Shoot Required)'}
+                        </SelectItem>
+                        <SelectItem 
+                          value="approved"
+                          disabled={shootCompleted === false}
+                        >
+                          Approved {shootCompleted === false && '(Shoot Required)'}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -297,6 +353,17 @@ export function ReelFormDialog({
                 )}
               />
             </div>
+
+            {validationError && (
+              <ValidationMessage message={validationError} type="error" />
+            )}
+
+            {shootCompleted === false && (
+              <ValidationMessage 
+                message="Shoot must be completed before this reel can be edited" 
+                type="warning" 
+              />
+            )}
 
             {/* Editor */}
             <FormField

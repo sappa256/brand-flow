@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { ReelFormDialog } from '@/components/reels/ReelFormDialog';
-import { Plus, User, Hash, AlertTriangle } from 'lucide-react';
+import { Plus, User, Hash, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { Reel, EditStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useWorkflowValidation } from '@/hooks/useWorkflowValidation';
 import {
   Select,
   SelectContent,
@@ -81,7 +82,21 @@ export default function Reels() {
     return true;
   });
 
+  const { canReelMoveToEditing } = useWorkflowValidation();
+
   const handleReelMove = async (reelId: string, newStatus: string) => {
+    const reel = reels.find(r => r.id === reelId);
+    if (!reel) return;
+
+    // Validate: can't move to editing unless shoot is completed
+    if (newStatus === 'editing') {
+      const canMove = await canReelMoveToEditing(reel.client_id, reel.month_number);
+      if (!canMove) {
+        toast.error('Cannot move to Editing: Shoot must be completed first');
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('reels')
       .update({ edit_status: newStatus as EditStatus })
@@ -92,8 +107,8 @@ export default function Reels() {
       return;
     }
 
-    setReels(prev => prev.map(reel => 
-      reel.id === reelId ? { ...reel, edit_status: newStatus as EditStatus } : reel
+    setReels(prev => prev.map(r => 
+      r.id === reelId ? { ...r, edit_status: newStatus as EditStatus } : r
     ));
     toast.success('Reel moved successfully');
   };
@@ -138,6 +153,13 @@ export default function Reels() {
             <User className="h-3 w-3" />
             <span>{reel.editor.full_name}</span>
           </div>
+        )}
+
+        {reel.ready_for_publishing && (
+          <Badge variant="default" className="text-xs bg-success/20 text-success border-success/30">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Ready to Publish
+          </Badge>
         )}
 
         {reel.notes && (

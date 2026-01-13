@@ -4,14 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KanbanBoard } from '@/components/shared/KanbanBoard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { DelayedCycleBadge } from '@/components/shared/DelayedCycleBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Film, Smile, Meh, Frown } from 'lucide-react';
+import { Plus, Film, Smile, Meh, Frown, AlertCircle } from 'lucide-react';
 import { CycleFormDialog } from '@/components/cycles/CycleFormDialog';
 import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
+import { useWorkflowValidation } from '@/hooks/useWorkflowValidation';
 
 type MonthlyCycle = Tables<'monthly_cycles'>;
 type Client = Tables<'clients'>;
@@ -48,8 +50,17 @@ export default function Cycles() {
     },
   });
 
+  const { canCycleComplete } = useWorkflowValidation();
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: CycleStatus }) => {
+      // Validate: can't complete unless posted >= planned
+      if (status === 'completed') {
+        const cycle = cycles.find(c => c.id === id);
+        if (cycle && !canCycleComplete(cycle.reels_posted || 0, cycle.reels_planned || 0)) {
+          throw new Error('Cannot complete: Reels posted must meet target');
+        }
+      }
       const { error } = await supabase.from('monthly_cycles').update({ status }).eq('id', id);
       if (error) throw error;
     },
@@ -57,7 +68,7 @@ export default function Cycles() {
       queryClient.invalidateQueries({ queryKey: ['monthly_cycles'] });
       toast.success('Cycle status updated');
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to update status'),
   });
 
   const filteredCycles = cycles.filter((c) => clientFilter === 'all' || c.client_id === clientFilter);
@@ -87,9 +98,10 @@ export default function Cycles() {
     const planned = cycle.reels_planned || 0;
     const posted = cycle.reels_posted || 0;
     const progress = planned > 0 ? (posted / planned) * 100 : 0;
+    const canComplete = canCycleComplete(posted, planned);
 
     return (
-      <Card className="cursor-pointer hover:shadow-md transition-shadow bg-card" onClick={() => handleEdit(cycle)}>
+      <Card className={`cursor-pointer hover:shadow-md transition-shadow bg-card ${cycle.is_delayed ? 'border-warning' : ''}`} onClick={() => handleEdit(cycle)}>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div>
@@ -97,6 +109,7 @@ export default function Cycles() {
               <p className="text-xs text-muted-foreground">Month {cycle.month_number}</p>
             </div>
             <div className="flex items-center gap-2">
+              {cycle.is_delayed && <DelayedCycleBadge reason={cycle.cycle_delay_reason} />}
               {getSatisfactionIcon(cycle.client_satisfaction)}
               <StatusBadge status={cycle.status} />
             </div>
@@ -139,21 +152,35 @@ export default function Cycles() {
             {(['planned', 'in_production', 'publishing_live', 'completed'] as CycleStatus[])
               .filter((s) => s !== cycle.status)
               .slice(0, 2)
-              .map((status) => (
-                <Button
-                  key={status}
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-7 flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateStatus.mutate({ id: cycle.id, status });
-                  }}
-                >
-                  → {status.replace('_', ' ')}
-                </Button>
-              ))}
+              .map((status) => {
+                const isCompleteDisabled = status === 'completed' && !canComplete;
+                return (
+                  <Button
+                    key={status}
+                    variant="ghost"
+                    size="sm"
+                    className={`text-xs h-7 flex-1 ${isCompleteDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={isCompleteDisabled}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isCompleteDisabled) {
+                        updateStatus.mutate({ id: cycle.id, status });
+                      }
+                    }}
+                    title={isCompleteDisabled ? 'Reels posted must meet target to complete' : undefined}
+                  >
+                    → {status.replace('_', ' ')}
+                  </Button>
+                );
+              })}
           </div>
+
+          {cycle.status !== 'completed' && !canComplete && (
+            <div className="flex items-center gap-1 text-xs text-warning">
+              <AlertCircle className="h-3 w-3" />
+              <span>{planned - posted} more reels needed to complete</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
