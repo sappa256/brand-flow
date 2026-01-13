@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { ValidationMessage } from '@/components/shared/ValidationMessage';
 import type { Tables } from '@/integrations/supabase/types';
 
 type ContentCalendarEntry = Tables<'content_calendar'>;
 type Client = Tables<'clients'>;
+type Reel = Tables<'reels'>;
 
 const schema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -38,6 +40,7 @@ interface Props {
 export function CalendarEntryDialog({ open, onOpenChange, entry, clients, selectedDate }: Props) {
   const queryClient = useQueryClient();
   const isEditing = !!entry;
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -50,6 +53,31 @@ export function CalendarEntryDialog({ open, onOpenChange, entry, clients, select
       post_url: '',
     },
   });
+
+  // Watch client_id for reel fetching
+  const watchedClientId = form.watch('client_id');
+
+  // Fetch available reels (approved and ready for publishing) for selected client
+  const { data: availableReels = [] } = useQuery({
+    queryKey: ['available-reels-for-posting', watchedClientId],
+    queryFn: async () => {
+      if (!watchedClientId) return [];
+      const { data, error } = await supabase
+        .from('reels')
+        .select('*')
+        .eq('client_id', watchedClientId)
+        .eq('edit_status', 'approved')
+        .eq('ready_for_publishing', true)
+        .order('month_number')
+        .order('reel_number');
+      if (error) throw error;
+      return data as Reel[];
+    },
+    enabled: !!watchedClientId,
+  });
+
+  // Check if there are approved reels ready for publishing
+  const hasReelsReadyToPost = availableReels.length > 0;
 
   useEffect(() => {
     if (entry) {
@@ -129,6 +157,11 @@ export function CalendarEntryDialog({ open, onOpenChange, entry, clients, select
   });
 
   const onSubmit = (values: FormValues) => {
+    // Validate: Can only post if there are approved reels ready for publishing
+    if (!isEditing && values.posting_status === 'posted' && !hasReelsReadyToPost) {
+      toast.error('Cannot mark as posted - no approved reels ready for publishing');
+      return;
+    }
     isEditing ? updateMutation.mutate(values) : createMutation.mutate(values);
   };
 
@@ -190,7 +223,9 @@ export function CalendarEntryDialog({ open, onOpenChange, entry, clients, select
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="posted">Posted</SelectItem>
+                      <SelectItem value="posted" disabled={!isEditing && !hasReelsReadyToPost}>
+                        Posted {!isEditing && !hasReelsReadyToPost && '(No reels ready)'}
+                      </SelectItem>
                       <SelectItem value="missed">Missed</SelectItem>
                     </SelectContent>
                   </Select>
@@ -210,6 +245,20 @@ export function CalendarEntryDialog({ open, onOpenChange, entry, clients, select
                 </FormItem>
               )} />
             </div>
+
+            {watchedClientId && !hasReelsReadyToPost && (
+              <ValidationMessage
+                message="No approved reels ready for publishing for this client. Reels must be approved and have 15+ approved reels in the batch."
+                type="warning"
+              />
+            )}
+
+            {watchedClientId && hasReelsReadyToPost && (
+              <ValidationMessage
+                message={`${availableReels.length} reel(s) ready for publishing`}
+                type="info"
+              />
+            )}
 
             <FormField control={form.control} name="post_url" render={({ field }) => (
               <FormItem>
