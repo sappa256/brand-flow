@@ -22,6 +22,7 @@ export type Database = {
           created_at: string
           current_contract_month: number
           end_date: string | null
+          health_status: Database["public"]["Enums"]["health_status"]
           id: string
           lead_id: string | null
           niche: string | null
@@ -40,6 +41,7 @@ export type Database = {
           created_at?: string
           current_contract_month?: number
           end_date?: string | null
+          health_status?: Database["public"]["Enums"]["health_status"]
           id?: string
           lead_id?: string | null
           niche?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           created_at?: string
           current_contract_month?: number
           end_date?: string | null
+          health_status?: Database["public"]["Enums"]["health_status"]
           id?: string
           lead_id?: string | null
           niche?: string | null
@@ -281,7 +284,9 @@ export type Database = {
             | Database["public"]["Enums"]["client_satisfaction"]
             | null
           created_at: string
+          cycle_delay_reason: string | null
           id: string
+          is_delayed: boolean
           issues_faced: string | null
           month_number: number
           reels_edited: number | null
@@ -297,7 +302,9 @@ export type Database = {
             | Database["public"]["Enums"]["client_satisfaction"]
             | null
           created_at?: string
+          cycle_delay_reason?: string | null
           id?: string
+          is_delayed?: boolean
           issues_faced?: string | null
           month_number: number
           reels_edited?: number | null
@@ -313,7 +320,9 @@ export type Database = {
             | Database["public"]["Enums"]["client_satisfaction"]
             | null
           created_at?: string
+          cycle_delay_reason?: string | null
           id?: string
+          is_delayed?: boolean
           issues_faced?: string | null
           month_number?: number
           reels_edited?: number | null
@@ -433,6 +442,7 @@ export type Database = {
           month_number: number
           notes: string | null
           priority: Database["public"]["Enums"]["priority_type"] | null
+          ready_for_publishing: boolean
           reel_number: number
           script_status: Database["public"]["Enums"]["script_status"]
           updated_at: string
@@ -447,6 +457,7 @@ export type Database = {
           month_number: number
           notes?: string | null
           priority?: Database["public"]["Enums"]["priority_type"] | null
+          ready_for_publishing?: boolean
           reel_number: number
           script_status?: Database["public"]["Enums"]["script_status"]
           updated_at?: string
@@ -461,6 +472,7 @@ export type Database = {
           month_number?: number
           notes?: string | null
           priority?: Database["public"]["Enums"]["priority_type"] | null
+          ready_for_publishing?: boolean
           reel_number?: number
           script_status?: Database["public"]["Enums"]["script_status"]
           updated_at?: string
@@ -611,6 +623,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_contract_month: {
+        Args: { start_date: string }
+        Returns: number
+      }
+      count_approved_reels: {
+        Args: { p_client_id: string; p_month_number: number }
+        Returns: number
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -623,6 +643,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_shoot_completed: {
+        Args: { p_client_id: string; p_month_number: number }
         Returns: boolean
       }
     }
@@ -640,6 +664,7 @@ export type Database = {
         | "publishing_live"
         | "completed"
       edit_status: "not_started" | "editing" | "ready_for_review" | "approved"
+      health_status: "good" | "watch" | "risk"
       lead_source: "website" | "instagram" | "referral" | "ads"
       lead_status:
         | "new"
@@ -803,6 +828,7 @@ export const Constants = {
         "completed",
       ],
       edit_status: ["not_started", "editing", "ready_for_review", "approved"],
+      health_status: ["good", "watch", "risk"],
       lead_source: ["website", "instagram", "referral", "ads"],
       lead_status: [
         "new",
