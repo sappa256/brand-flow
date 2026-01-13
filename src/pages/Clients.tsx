@@ -4,6 +4,8 @@ import { DataTable } from '@/components/shared/DataTable';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { HealthBadge } from '@/components/shared/HealthBadge';
+import { ContractWarningBadge } from '@/components/shared/ContractWarningBadge';
 import { Plus, Eye } from 'lucide-react';
 import type { Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -86,7 +88,10 @@ export default function Clients() {
       key: 'month',
       header: 'Contract Month',
       render: (client: Client) => (
-        <span className="text-sm">Month {client.current_contract_month}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Month {client.current_contract_month}</span>
+          <ContractWarningBadge contractMonth={client.current_contract_month} showLabel={false} />
+        </div>
       ),
     },
     {
@@ -97,6 +102,11 @@ export default function Clients() {
           {format(new Date(client.start_date), 'MMM d, yyyy')}
         </span>
       ),
+    },
+    {
+      key: 'health',
+      header: 'Health',
+      render: (client: Client) => <HealthBadge status={client.health_status || 'good'} size="sm" />,
     },
     {
       key: 'status',
