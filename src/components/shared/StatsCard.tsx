@@ -23,7 +23,7 @@ export function StatsCard({
   className,
 }: StatsCardProps) {
   return (
-    <Card className={cn('relative overflow-hidden', className)}>
+    <Card className={cn('relative overflow-hidden group', className)}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -33,8 +33,8 @@ export function StatsCard({
               {trend && (
                 <span
                   className={cn(
-                    'text-sm font-medium',
-                    trend.isPositive ? 'text-success' : 'text-destructive'
+                    'text-sm font-medium px-1.5 py-0.5 rounded-md',
+                    trend.isPositive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                   )}
                 >
                   {trend.isPositive ? '+' : ''}{trend.value}%
@@ -46,12 +46,13 @@ export function StatsCard({
             )}
           </div>
           {icon && (
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
               {icon}
             </div>
           )}
         </div>
       </CardContent>
+      <div className="absolute bottom-0 left-0 right-0 h-1 gradient-brand opacity-60" />
     </Card>
   );
 }
