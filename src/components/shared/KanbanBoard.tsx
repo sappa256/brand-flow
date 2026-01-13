@@ -94,18 +94,18 @@ interface DroppableColumnProps {
 
 function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColumnProps) {
   return (
-    <div className="flex-shrink-0 w-72 sm:w-80 animate-fade-in-up">
+    <div className="flex-shrink-0 w-[280px] xs:w-72 sm:w-80 animate-fade-in-up">
       <Card className={cn(
         "h-full bg-card/50 transition-all duration-300 backdrop-blur-sm",
         isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-glow"
       )}>
-        <CardHeader className="py-3 px-4">
+        <CardHeader className="py-2 sm:py-3 px-3 sm:px-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-foreground">
+            <CardTitle className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[150px] sm:max-w-none">
               {column.title}
             </CardTitle>
             <span className={cn(
-              "text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200",
+              "text-xs font-medium px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-200",
               "bg-muted text-muted-foreground",
               isOver && "bg-primary/20 text-primary"
             )}>
@@ -113,8 +113,8 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
             </span>
           </div>
         </CardHeader>
-        <CardContent className="px-2 pb-2">
-          <ScrollArea className="h-[calc(100vh-280px)]">
+        <CardContent className="px-1.5 sm:px-2 pb-2">
+          <ScrollArea className="h-[calc(100vh-320px)] sm:h-[calc(100vh-280px)]">
             <SortableContext
               items={items.map(i => i.id)}
               strategy={verticalListSortingStrategy}
@@ -250,7 +250,7 @@ export function KanbanBoard<T>({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
+      <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-4 scrollbar-thin -mx-2 px-2 sm:mx-0 sm:px-0">
         {columns.map((column) => (
           <DroppableColumn
             key={column.id}

@@ -80,27 +80,27 @@ export default function Leads() {
       className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => handleCardClick(lead)}
     >
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-medium text-sm">{lead.full_name}</h3>
+      <CardContent className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-medium text-xs sm:text-sm truncate">{lead.full_name}</h3>
             {lead.niche && (
-              <p className="text-xs text-muted-foreground">{lead.niche}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{lead.niche}</p>
             )}
           </div>
-          <StatusBadge status={lead.status} />
+          <StatusBadge status={lead.status} className="text-[10px] sm:text-xs shrink-0" />
         </div>
 
-        <div className="flex items-center gap-2 text-muted-foreground">
-          {lead.email && <Mail className="h-3 w-3" />}
-          {lead.phone && <Phone className="h-3 w-3" />}
-          {lead.instagram_link && <Instagram className="h-3 w-3" />}
-          {lead.youtube_link && <Youtube className="h-3 w-3" />}
-          {lead.linkedin_link && <Linkedin className="h-3 w-3" />}
+        <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground flex-wrap">
+          {lead.email && <Mail className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+          {lead.phone && <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+          {lead.instagram_link && <Instagram className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+          {lead.youtube_link && <Youtube className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+          {lead.linkedin_link && <Linkedin className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
         </div>
 
         {lead.budget_range && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
             Budget: ₹{lead.budget_range.replace('_plus', '+')}
           </p>
         )}
@@ -109,10 +109,10 @@ export default function Leads() {
           <Button 
             size="sm" 
             variant="secondary" 
-            className="w-full mt-2"
+            className="w-full mt-1 sm:mt-2 h-7 sm:h-8 text-xs"
             onClick={(e) => handleCreateProposal(lead, e)}
           >
-            <FileText className="h-3 w-3 mr-1" />
+            <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
             Create Proposal
           </Button>
         )}
@@ -123,9 +123,9 @@ export default function Leads() {
   if (isLoading) {
     return (
       <AppLayout title="Leads">
-        <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-4 -mx-2 px-2 sm:mx-0 sm:px-0">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-80 md:h-96 w-72 md:w-80 flex-shrink-0" />
+            <Skeleton key={i} className="h-[calc(100vh-320px)] sm:h-[calc(100vh-280px)] w-[280px] xs:w-72 sm:w-80 flex-shrink-0" />
           ))}
         </div>
       </AppLayout>
