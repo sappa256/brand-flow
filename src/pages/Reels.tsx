@@ -174,9 +174,9 @@ export default function Reels() {
   if (isLoading) {
     return (
       <AppLayout title="Reels">
-        <div className="flex gap-4">
+        <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-96 w-80" />
+            <Skeleton key={i} className="h-80 md:h-96 w-72 md:w-80 flex-shrink-0" />
           ))}
         </div>
       </AppLayout>
@@ -187,9 +187,9 @@ export default function Reels() {
     <AppLayout
       title="Reels"
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm">
               <SelectValue placeholder="All Clients" />
             </SelectTrigger>
             <SelectContent>
@@ -203,7 +203,7 @@ export default function Reels() {
           </Select>
 
           <Select value={filterBatch} onValueChange={setFilterBatch}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24 md:w-32 text-xs md:text-sm">
               <SelectValue placeholder="All Batches" />
             </SelectTrigger>
             <SelectContent>
@@ -213,9 +213,9 @@ export default function Reels() {
             </SelectContent>
           </Select>
 
-          <Button size="sm" onClick={handleAddNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Reel
+          <Button size="sm" onClick={handleAddNew} className="text-xs md:text-sm">
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Add Reel</span>
           </Button>
         </div>
       }

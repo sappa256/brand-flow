@@ -200,24 +200,24 @@ export default function Contracts() {
       }
     >
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Active Contracts</p>
-          <p className="text-2xl font-bold">{activeContracts.length}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+          <p className="text-xs md:text-sm text-muted-foreground">Active Contracts</p>
+          <p className="text-xl md:text-2xl font-bold">{activeContracts.length}</p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-          <p className="text-2xl font-bold text-primary">
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+          <p className="text-xs md:text-sm text-muted-foreground">Monthly Revenue</p>
+          <p className="text-xl md:text-2xl font-bold text-primary">
             ₹{totalMRR.toLocaleString('en-IN')}
           </p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Ending Soon</p>
-          <p className="text-2xl font-bold text-warning">{endingSoon.length}</p>
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+          <p className="text-xs md:text-sm text-muted-foreground">Ending Soon</p>
+          <p className="text-xl md:text-2xl font-bold text-warning">{endingSoon.length}</p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Avg Contract Value</p>
-          <p className="text-2xl font-bold">
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+          <p className="text-xs md:text-sm text-muted-foreground">Avg Contract Value</p>
+          <p className="text-xl md:text-2xl font-bold">
             ₹{activeContracts.length > 0 
               ? Math.round(totalMRR / activeContracts.length).toLocaleString('en-IN')
               : 0

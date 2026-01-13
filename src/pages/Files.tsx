@@ -137,11 +137,11 @@ export default function Files() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as BucketType)}>
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full md:w-auto">
             {(Object.keys(BUCKET_CONFIG) as BucketType[]).map((bucket) => (
-              <TabsTrigger key={bucket} value={bucket} className="gap-2">
+              <TabsTrigger key={bucket} value={bucket} className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
                 {BUCKET_CONFIG[bucket].icon}
-                {BUCKET_CONFIG[bucket].label}
+                <span className="hidden sm:inline">{BUCKET_CONFIG[bucket].label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
