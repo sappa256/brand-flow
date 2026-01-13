@@ -87,36 +87,40 @@ function NotificationLogTable({ userId }: { userId?: string }) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Event</TableHead>
-          <TableHead>Subject</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Date</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {notifications.map((notification: any) => (
-          <TableRow key={notification.id}>
-            <TableCell className="capitalize">
-              {notification.event_type.replace(/_/g, ' ')}
-            </TableCell>
-            <TableCell className="max-w-[200px] truncate">
-              {notification.subject}
-            </TableCell>
-            <TableCell>
-              <Badge variant={notification.is_sent ? 'default' : 'secondary'}>
-                {notification.is_sent ? 'Sent' : 'Pending'}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {new Date(notification.created_at).toLocaleDateString()}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">Event</TableHead>
+              <TableHead className="whitespace-nowrap">Subject</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap">Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {notifications.map((notification: any) => (
+              <TableRow key={notification.id}>
+                <TableCell className="capitalize whitespace-nowrap">
+                  {notification.event_type.replace(/_/g, ' ')}
+                </TableCell>
+                <TableCell className="max-w-[150px] sm:max-w-[200px] truncate">
+                  {notification.subject}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={notification.is_sent ? 'default' : 'secondary'}>
+                    {notification.is_sent ? 'Sent' : 'Pending'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground whitespace-nowrap">
+                  {new Date(notification.created_at).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 
@@ -313,8 +317,8 @@ export default function Settings() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage team members, roles, and app preferences</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage team members, roles, and app preferences</p>
         </div>
 
         <Tabs defaultValue="team" className="space-y-6">
@@ -356,76 +360,89 @@ export default function Settings() {
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Member</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {teamMembers.map((member) => (
-                        <TableRow key={member.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                                  {getInitials(member.full_name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium">{member.full_name || 'Unknown'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {member.email || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {member.roles.length > 0 ? (
-                                member.roles.map((role) => (
-                                  <Badge
-                                    key={role}
-                                    className={`${ROLE_COLORS[role]} cursor-pointer group relative`}
-                                  >
-                                    {ROLE_LABELS[role]}
-                                    <button
-                                      onClick={() => handleRemoveRole(member.id, role)}
-                                      className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      disabled={removeRoleMutation.isPending}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-muted-foreground text-sm">No roles</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddRole(member)}
-                              disabled={member.roles.length >= 5}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add Role
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {teamMembers.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                            No team members found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                  <div className="overflow-x-auto -mx-6 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle px-6 sm:px-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="whitespace-nowrap">Member</TableHead>
+                            <TableHead className="whitespace-nowrap hidden sm:table-cell">Email</TableHead>
+                            <TableHead className="whitespace-nowrap">Roles</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {teamMembers.map((member) => (
+                            <TableRow key={member.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                  <Avatar className="h-8 w-8 sm:h-9 sm:w-9 shrink-0">
+                                    <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+                                      {getInitials(member.full_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <span className="font-medium block truncate text-sm sm:text-base">
+                                      {member.full_name || 'Unknown'}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate block sm:hidden">
+                                      {member.email || '-'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground hidden sm:table-cell">
+                                {member.email || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {member.roles.length > 0 ? (
+                                    member.roles.map((role) => (
+                                      <Badge
+                                        key={role}
+                                        className={`${ROLE_COLORS[role]} cursor-pointer group relative text-xs`}
+                                      >
+                                        <span className="hidden sm:inline">{ROLE_LABELS[role]}</span>
+                                        <span className="sm:hidden">{ROLE_LABELS[role].slice(0, 3)}</span>
+                                        <button
+                                          onClick={() => handleRemoveRole(member.id, role)}
+                                          className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          disabled={removeRoleMutation.isPending}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs sm:text-sm">No roles</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddRole(member)}
+                                  disabled={member.roles.length >= 5}
+                                  className="h-8 px-2 sm:px-3"
+                                >
+                                  <Plus className="h-4 w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Add Role</span>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {teamMembers.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                No team members found
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
