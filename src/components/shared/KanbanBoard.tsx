@@ -58,7 +58,6 @@ function SortableItem({ id, children }: SortableItemProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
@@ -66,14 +65,15 @@ function SortableItem({ id, children }: SortableItemProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative group animate-fade-in",
-        isDragging && "z-50"
+        "relative group animate-fade-in-up transition-all duration-200",
+        isDragging && "z-50 opacity-50 scale-[1.02]",
+        !isDragging && "hover-lift"
       )}
     >
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted"
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted/80 bg-card/50 backdrop-blur-sm shadow-soft"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
@@ -91,10 +91,10 @@ interface DroppableColumnProps {
 
 function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColumnProps) {
   return (
-    <div className="flex-shrink-0 w-80">
+    <div className="flex-shrink-0 w-80 animate-fade-in-up">
       <Card className={cn(
-        "h-full bg-card/50 transition-colors duration-200",
-        isOver && "ring-2 ring-primary/50 bg-primary/5"
+        "h-full bg-card/50 transition-all duration-300 backdrop-blur-sm",
+        isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-glow"
       )}>
         <CardHeader className="py-3 px-4">
           <div className="flex items-center justify-between">
@@ -102,8 +102,9 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
               {column.title}
             </CardTitle>
             <span className={cn(
-              "text-xs font-medium px-2 py-1 rounded-full",
-              "bg-muted text-muted-foreground"
+              "text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200",
+              "bg-muted text-muted-foreground",
+              isOver && "bg-primary/20 text-primary"
             )}>
               {items.length}
             </span>
@@ -116,18 +117,20 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
               strategy={verticalListSortingStrategy}
             >
               <div className={cn(
-                "space-y-2 p-2 min-h-[100px] rounded-lg transition-colors",
+                "space-y-2 p-2 min-h-[100px] rounded-xl transition-all duration-300",
                 isOver && "bg-primary/10"
               )}>
                 {items.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
+                  <div className="text-center py-8 text-muted-foreground text-sm animate-pulse-soft">
                     {emptyMessage}
                   </div>
                 ) : (
-                  items.map((item) => (
-                    <SortableItem key={item.id} id={item.id}>
-                      {item.element}
-                    </SortableItem>
+                  items.map((item, index) => (
+                    <div key={item.id} className={`stagger-${Math.min(index + 1, 6)}`}>
+                      <SortableItem id={item.id}>
+                        {item.element}
+                      </SortableItem>
+                    </div>
                   ))
                 )}
               </div>
@@ -256,7 +259,7 @@ export function KanbanBoard<T>({
       
       <DragOverlay>
         {activeItem ? (
-          <div className="opacity-90 rotate-2 scale-105 shadow-xl">
+          <div className="rotate-2 scale-105 shadow-soft-lg animate-scale-in-bounce">
             {renderItem(activeItem)}
           </div>
         ) : null}

@@ -23,7 +23,7 @@ export function StatsCard({
   className,
 }: StatsCardProps) {
   return (
-    <Card className={cn('relative overflow-hidden group', className)}>
+    <Card className={cn('relative overflow-hidden group hover-lift', className)}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -33,7 +33,7 @@ export function StatsCard({
               {trend && (
                 <span
                   className={cn(
-                    'text-sm font-medium px-1.5 py-0.5 rounded-md',
+                    'text-sm font-medium px-2 py-0.5 rounded-full animate-scale-in',
                     trend.isPositive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                   )}
                 >
@@ -46,13 +46,13 @@ export function StatsCard({
             )}
           </div>
           {icon && (
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:scale-110 group-hover:shadow-glow">
               {icon}
             </div>
           )}
         </div>
       </CardContent>
-      <div className="absolute bottom-0 left-0 right-0 h-1 gradient-brand opacity-60" />
+      <div className="absolute bottom-0 left-0 right-0 h-1 gradient-brand opacity-60 transition-opacity duration-300 group-hover:opacity-100" />
     </Card>
   );
 }
