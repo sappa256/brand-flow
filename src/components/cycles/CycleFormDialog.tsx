@@ -10,8 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
+import { useWorkflowValidation } from '@/hooks/useWorkflowValidation';
+import { ValidationMessage } from '@/components/shared/ValidationMessage';
 
 type MonthlyCycle = Tables<'monthly_cycles'>;
 type Client = Tables<'clients'>;
@@ -26,6 +29,8 @@ const schema = z.object({
   status: z.enum(['planned', 'in_production', 'publishing_live', 'completed']),
   client_satisfaction: z.enum(['happy', 'neutral', 'risk']).optional().nullable(),
   issues_faced: z.string().optional(),
+  is_delayed: z.boolean().optional(),
+  cycle_delay_reason: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -40,6 +45,7 @@ interface Props {
 export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
   const queryClient = useQueryClient();
   const isEditing = !!cycle;
+  const { canCycleComplete } = useWorkflowValidation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,8 +59,16 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
       status: 'planned',
       client_satisfaction: 'neutral',
       issues_faced: '',
+      is_delayed: false,
+      cycle_delay_reason: '',
     },
   });
+
+  const watchStatus = form.watch('status');
+  const watchPosted = form.watch('reels_posted') || 0;
+  const watchPlanned = form.watch('reels_planned') || 0;
+  const watchIsDelayed = form.watch('is_delayed');
+  const canComplete = canCycleComplete(watchPosted, watchPlanned);
 
   useEffect(() => {
     if (cycle) {
@@ -68,6 +82,8 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
         status: cycle.status,
         client_satisfaction: cycle.client_satisfaction,
         issues_faced: cycle.issues_faced || '',
+        is_delayed: cycle.is_delayed || false,
+        cycle_delay_reason: cycle.cycle_delay_reason || '',
       });
     } else {
       form.reset({
@@ -80,12 +96,23 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
         status: 'planned',
         client_satisfaction: 'neutral',
         issues_faced: '',
+        is_delayed: false,
+        cycle_delay_reason: '',
       });
     }
   }, [cycle, form]);
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
+      // Validate: can't complete unless posted >= planned
+      if (values.status === 'completed' && !canCycleComplete(values.reels_posted || 0, values.reels_planned || 0)) {
+        throw new Error('Cannot complete: Reels posted must meet target');
+      }
+      // Validate: delayed cycles require a reason
+      if (values.is_delayed && !values.cycle_delay_reason?.trim()) {
+        throw new Error('Delay reason is required for delayed cycles');
+      }
+      
       const { error } = await supabase.from('monthly_cycles').insert({
         client_id: values.client_id,
         month_number: values.month_number,
@@ -96,6 +123,8 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
         status: values.status,
         client_satisfaction: values.client_satisfaction,
         issues_faced: values.issues_faced || null,
+        is_delayed: values.is_delayed || false,
+        cycle_delay_reason: values.cycle_delay_reason || null,
       });
       if (error) throw error;
     },
@@ -104,12 +133,21 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
       toast.success('Cycle created');
       onOpenChange(false);
     },
-    onError: () => toast.error('Failed to create cycle'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to create cycle'),
   });
 
   const updateMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       if (!cycle) return;
+      // Validate: can't complete unless posted >= planned
+      if (values.status === 'completed' && !canCycleComplete(values.reels_posted || 0, values.reels_planned || 0)) {
+        throw new Error('Cannot complete: Reels posted must meet target');
+      }
+      // Validate: delayed cycles require a reason
+      if (values.is_delayed && !values.cycle_delay_reason?.trim()) {
+        throw new Error('Delay reason is required for delayed cycles');
+      }
+      
       const { error } = await supabase.from('monthly_cycles').update({
         client_id: values.client_id,
         month_number: values.month_number,
@@ -120,6 +158,8 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
         status: values.status,
         client_satisfaction: values.client_satisfaction,
         issues_faced: values.issues_faced || null,
+        is_delayed: values.is_delayed || false,
+        cycle_delay_reason: values.cycle_delay_reason || null,
       }).eq('id', cycle.id);
       if (error) throw error;
     },
@@ -128,7 +168,7 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
       toast.success('Cycle updated');
       onOpenChange(false);
     },
-    onError: () => toast.error('Failed to update cycle'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to update cycle'),
   });
 
   const onSubmit = (values: FormValues) => {
@@ -203,7 +243,9 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
                       <SelectItem value="planned">Planned</SelectItem>
                       <SelectItem value="in_production">In Production</SelectItem>
                       <SelectItem value="publishing_live">Publishing</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="completed" disabled={!canComplete}>
+                        Completed {!canComplete && '(Need more reels)'}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
@@ -223,6 +265,46 @@ export function CycleFormDialog({ open, onOpenChange, cycle, clients }: Props) {
                 </FormItem>
               )} />
             </div>
+
+            {watchStatus === 'completed' && !canComplete && (
+              <ValidationMessage 
+                message={`Cannot complete: ${watchPlanned - watchPosted} more reels need to be posted`} 
+                type="error" 
+              />
+            )}
+
+            <FormField control={form.control} name="is_delayed" render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Mark as Delayed</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Flag this cycle as delayed if it's behind schedule
+                  </p>
+                </div>
+              </FormItem>
+            )} />
+
+            {watchIsDelayed && (
+              <FormField control={form.control} name="cycle_delay_reason" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Delay Reason *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      rows={2} 
+                      placeholder="Explain why this cycle is delayed..." 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
 
             <FormField control={form.control} name="issues_faced" render={({ field }) => (
               <FormItem>
