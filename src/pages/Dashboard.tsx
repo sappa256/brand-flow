@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Users, FileText, Building2, IndianRupee, TrendingUp, Film } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { cn } from '@/lib/utils';
 
 interface DashboardStats {
   totalLeads: number;
@@ -147,53 +148,63 @@ export default function Dashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {hasAnyRole(['admin', 'sales']) && (
             <>
-              <StatsCard
-                title="Total Leads"
-                value={stats?.totalLeads || 0}
-                subtitle="All time"
-                icon={<Users className="h-6 w-6" />}
-              />
-              <StatsCard
-                title="Pending Proposals"
-                value={stats?.pendingProposals || 0}
-                subtitle="Draft + Sent"
-                icon={<FileText className="h-6 w-6" />}
-              />
+              <div className="stagger-1 animate-fade-in-up">
+                <StatsCard
+                  title="Total Leads"
+                  value={stats?.totalLeads || 0}
+                  subtitle="All time"
+                  icon={<Users className="h-6 w-6" />}
+                />
+              </div>
+              <div className="stagger-2 animate-fade-in-up">
+                <StatsCard
+                  title="Pending Proposals"
+                  value={stats?.pendingProposals || 0}
+                  subtitle="Draft + Sent"
+                  icon={<FileText className="h-6 w-6" />}
+                />
+              </div>
             </>
           )}
           
           {hasAnyRole(['admin', 'sales', 'strategy']) && (
-            <StatsCard
-              title="Active Clients"
-              value={stats?.activeClients || 0}
-              subtitle={stats?.atRiskClients ? `${stats.atRiskClients} at risk` : 'All healthy'}
-              icon={<Building2 className="h-6 w-6" />}
-            />
+            <div className="stagger-3 animate-fade-in-up">
+              <StatsCard
+                title="Active Clients"
+                value={stats?.activeClients || 0}
+                subtitle={stats?.atRiskClients ? `${stats.atRiskClients} at risk` : 'All healthy'}
+                icon={<Building2 className="h-6 w-6" />}
+              />
+            </div>
           )}
           
           {hasAnyRole(['admin', 'sales']) && (
-            <StatsCard
-              title="Monthly Revenue"
-              value={formatCurrency(stats?.monthlyRevenue || 0)}
-              subtitle="Active contracts"
-              icon={<IndianRupee className="h-6 w-6" />}
-            />
+            <div className="stagger-4 animate-fade-in-up">
+              <StatsCard
+                title="Monthly Revenue"
+                value={formatCurrency(stats?.monthlyRevenue || 0)}
+                subtitle="Active contracts"
+                icon={<IndianRupee className="h-6 w-6" />}
+              />
+            </div>
           )}
 
           {hasAnyRole(['admin', 'editor', 'strategy']) && (
-            <StatsCard
-              title="Reels This Month"
-              value={stats?.reelsThisMonth || 0}
-              subtitle="Created"
-              icon={<Film className="h-6 w-6" />}
-            />
+            <div className="stagger-5 animate-fade-in-up">
+              <StatsCard
+                title="Reels This Month"
+                value={stats?.reelsThisMonth || 0}
+                subtitle="Created"
+                icon={<Film className="h-6 w-6" />}
+              />
+            </div>
           )}
         </div>
 
         {/* Recent Activity & Quick Actions */}
         <div className="grid gap-6 lg:grid-cols-2">
           {hasAnyRole(['admin', 'sales']) && (
-            <Card>
+            <Card className="animate-fade-in-up stagger-5 hover-lift">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <TrendingUp className="h-5 w-5 text-primary" />
@@ -207,10 +218,13 @@ export default function Dashboard() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {recentActivity.map((item) => (
+                    {recentActivity.map((item, index) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between py-2 border-b last:border-0"
+                        className={cn(
+                          "flex items-center justify-between py-2 border-b last:border-0 animate-fade-in-up transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg",
+                          `stagger-${Math.min(index + 1, 6)}`
+                        )}
                       >
                         <div>
                           <p className="font-medium text-sm">{item.name}</p>
@@ -227,7 +241,7 @@ export default function Dashboard() {
             </Card>
           )}
 
-          <Card>
+          <Card className="animate-fade-in-up stagger-6 hover-lift">
             <CardHeader>
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
@@ -237,16 +251,20 @@ export default function Dashboard() {
                   <>
                     <a
                       href="/leads"
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 group press-effect"
                     >
-                      <Users className="h-5 w-5 text-primary" />
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                        <Users className="h-4 w-4" />
+                      </div>
                       <span className="text-sm font-medium">Add New Lead</span>
                     </a>
                     <a
                       href="/proposals"
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 group press-effect"
                     >
-                      <FileText className="h-5 w-5 text-primary" />
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                        <FileText className="h-4 w-4" />
+                      </div>
                       <span className="text-sm font-medium">Create Proposal</span>
                     </a>
                   </>
@@ -254,9 +272,11 @@ export default function Dashboard() {
                 {hasAnyRole(['admin', 'editor', 'strategy']) && (
                   <a
                     href="/reels"
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 group press-effect"
                   >
-                    <Film className="h-5 w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                      <Film className="h-4 w-4" />
+                    </div>
                     <span className="text-sm font-medium">View Editing Pipeline</span>
                   </a>
                 )}
