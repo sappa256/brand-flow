@@ -123,9 +123,9 @@ export default function Leads() {
   if (isLoading) {
     return (
       <AppLayout title="Leads">
-        <div className="flex gap-4">
+        <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-96 w-80" />
+            <Skeleton key={i} className="h-80 md:h-96 w-72 md:w-80 flex-shrink-0" />
           ))}
         </div>
       </AppLayout>

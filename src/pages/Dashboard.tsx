@@ -145,7 +145,7 @@ export default function Dashboard() {
     <AppLayout title="Dashboard">
       <div className="space-y-6">
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
           {hasAnyRole(['admin', 'sales']) && (
             <>
               <div className="stagger-1 animate-fade-in-up">
@@ -202,7 +202,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Activity & Quick Actions */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {hasAnyRole(['admin', 'sales']) && (
             <Card className="animate-fade-in-up stagger-5 hover-lift">
               <CardHeader>

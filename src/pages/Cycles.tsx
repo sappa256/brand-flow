@@ -191,18 +191,19 @@ export default function Cycles() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Monthly Cycles</h1>
-            <p className="text-muted-foreground">Track monthly production progress</p>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Monthly Cycles</h1>
+            <p className="text-sm text-muted-foreground">Track monthly production progress</p>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Cycle
+          <Button onClick={() => setIsDialogOpen(true)} size="sm" className="w-fit">
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">New Cycle</span>
+            <span className="md:hidden">New</span>
           </Button>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 md:gap-3">
           <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-36 md:w-48 text-xs md:text-sm">
               <SelectValue placeholder="Filter by client" />
             </SelectTrigger>
             <SelectContent>

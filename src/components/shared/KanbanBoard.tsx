@@ -91,7 +91,7 @@ interface DroppableColumnProps {
 
 function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColumnProps) {
   return (
-    <div className="flex-shrink-0 w-80 animate-fade-in-up">
+    <div className="flex-shrink-0 w-72 sm:w-80 animate-fade-in-up">
       <Card className={cn(
         "h-full bg-card/50 transition-all duration-300 backdrop-blur-sm",
         isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-glow"

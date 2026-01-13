@@ -168,47 +168,47 @@ export default function OwnerDashboard() {
     <AppLayout title="Owner – Daily Ops Command Center">
       <div className="space-y-6">
         {/* Summary Row */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
           <Card className="bg-card border-primary/20">
-            <CardContent className="p-4 text-center">
-              <Camera className="h-6 w-6 mx-auto text-primary mb-2" />
-              <div className="text-2xl font-bold">{todayShoots.length}</div>
-              <div className="text-xs text-muted-foreground">Shoots Today</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <Camera className="h-5 w-5 md:h-6 md:w-6 mx-auto text-primary mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{todayShoots.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Shoots Today</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-warning/20">
-            <CardContent className="p-4 text-center">
-              <Film className="h-6 w-6 mx-auto text-warning mb-2" />
-              <div className="text-2xl font-bold">{stuckReels.length}</div>
-              <div className="text-xs text-muted-foreground">Stuck Reels</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <Film className="h-5 w-5 md:h-6 md:w-6 mx-auto text-warning mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{stuckReels.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Stuck Reels</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-info/20">
-            <CardContent className="p-4 text-center">
-              <Calendar className="h-6 w-6 mx-auto text-info mb-2" />
-              <div className="text-2xl font-bold">{todayPosts.length}</div>
-              <div className="text-xs text-muted-foreground">Posts Due Today</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <Calendar className="h-5 w-5 md:h-6 md:w-6 mx-auto text-info mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{todayPosts.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Posts Due Today</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-destructive/20">
-            <CardContent className="p-4 text-center">
-              <XCircle className="h-6 w-6 mx-auto text-destructive mb-2" />
-              <div className="text-2xl font-bold">{missedPosts.length}</div>
-              <div className="text-xs text-muted-foreground">Missed (7 days)</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <XCircle className="h-5 w-5 md:h-6 md:w-6 mx-auto text-destructive mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{missedPosts.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Missed (7 days)</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-orange-500/20">
-            <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto text-orange-500 mb-2" />
-              <div className="text-2xl font-bold">{endingContracts.length}</div>
-              <div className="text-xs text-muted-foreground">Contracts Ending</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <Clock className="h-5 w-5 md:h-6 md:w-6 mx-auto text-orange-500 mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{endingContracts.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Contracts Ending</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-destructive/20">
-            <CardContent className="p-4 text-center">
-              <AlertTriangle className="h-6 w-6 mx-auto text-destructive mb-2" />
-              <div className="text-2xl font-bold">{riskClients.length}</div>
-              <div className="text-xs text-muted-foreground">At Risk Clients</div>
+            <CardContent className="p-3 md:p-4 text-center">
+              <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 mx-auto text-destructive mb-1 md:mb-2" />
+              <div className="text-xl md:text-2xl font-bold">{riskClients.length}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">At Risk Clients</div>
             </CardContent>
           </Card>
         </div>

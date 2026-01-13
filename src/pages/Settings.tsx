@@ -318,26 +318,26 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="team" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[625px]">
-            <TabsTrigger value="team" className="gap-2">
-              <Users className="h-4 w-4" />
-              Team
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full md:w-auto md:inline-flex">
+            <TabsTrigger value="team" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Users className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Team</span>
             </TabsTrigger>
-            <TabsTrigger value="roles" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Roles
+            <TabsTrigger value="roles" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Shield className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Roles</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="gap-2">
-              <Bell className="h-4 w-4" />
-              Notifications
+            <TabsTrigger value="notifications" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Bell className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
-            <TabsTrigger value="contracts" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Contracts
+            <TabsTrigger value="contracts" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Contracts</span>
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              Preferences
+            <TabsTrigger value="preferences" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <SettingsIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Preferences</span>
             </TabsTrigger>
           </TabsList>
 
