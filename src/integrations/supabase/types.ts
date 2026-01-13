@@ -704,7 +704,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      email_notifications_secure: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string | null
+          is_sent: boolean | null
+          message: string | null
+          role: string | null
+          sent_at: string | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string | null
+          is_sent?: boolean | null
+          message?: string | null
+          role?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string | null
+          is_sent?: boolean | null
+          message?: string | null
+          role?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_contract_month: {
