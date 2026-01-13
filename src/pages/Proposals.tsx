@@ -129,6 +129,7 @@ export default function Proposals() {
         getItemId={(proposal) => proposal.id}
         renderItem={renderProposalCard}
         emptyMessage="No proposals"
+        onRefresh={fetchProposals}
       />
 
       <ProposalFormDialog

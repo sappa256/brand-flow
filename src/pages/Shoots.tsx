@@ -224,6 +224,7 @@ export default function Shoots() {
             getItemId={(shoot) => shoot.id}
             renderItem={renderShootCard}
             emptyMessage="No shoots"
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['shoots'] })}
           />
         )}
       </div>

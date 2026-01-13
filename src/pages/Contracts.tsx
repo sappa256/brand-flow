@@ -231,6 +231,7 @@ export default function Contracts() {
         columns={columns}
         getRowId={(contract) => contract.id}
         emptyMessage="No contracts yet."
+        onRefresh={fetchContracts}
       />
 
       <ContractFormDialog

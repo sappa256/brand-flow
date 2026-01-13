@@ -147,6 +147,7 @@ export default function Clients() {
         columns={columns}
         getRowId={(client) => client.id}
         emptyMessage="No clients yet. Convert a proposal to create your first client."
+        onRefresh={fetchClients}
       />
 
       <ClientFormDialog
