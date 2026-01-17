@@ -66,6 +66,18 @@ export default function Strategy() {
     onError: () => toast.error('Failed to update status'),
   });
 
+  const deleteStrategy = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('strategies').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strategies'] });
+      toast.success('Strategy deleted');
+    },
+    onError: () => toast.error('Failed to delete strategy'),
+  });
+
   const filteredStrategies = strategies.filter((s) => 
     clientFilter === 'all' || s.client_id === clientFilter
   );
@@ -186,7 +198,9 @@ export default function Strategy() {
             renderItem={renderCard}
             emptyMessage="No strategies"
             onItemMove={(id, newStatus) => updateStatus.mutate({ id, status: newStatus as StrategyStatus })}
+            onItemDelete={(id) => deleteStrategy.mutateAsync(id)}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['strategies'] })}
+            deleteConfirmMessage="Are you sure you want to delete this strategy? This action cannot be undone."
           />
         )}
       </div>

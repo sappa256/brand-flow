@@ -113,6 +113,21 @@ export default function Reels() {
     toast.success('Reel moved successfully');
   };
 
+  const handleReelDelete = async (reelId: string) => {
+    const { error } = await supabase
+      .from('reels')
+      .delete()
+      .eq('id', reelId);
+
+    if (error) {
+      toast.error('Failed to delete reel');
+      return;
+    }
+
+    setReels(prev => prev.filter(r => r.id !== reelId));
+    toast.success('Reel deleted successfully');
+  };
+
   const renderReelCard = (reel: Reel) => (
     <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -228,7 +243,9 @@ export default function Reels() {
         renderItem={renderReelCard}
         emptyMessage="No reels"
         onItemMove={handleReelMove}
+        onItemDelete={handleReelDelete}
         onRefresh={fetchData}
+        deleteConfirmMessage="Are you sure you want to delete this reel? This action cannot be undone."
       />
 
       <ReelFormDialog

@@ -73,6 +73,18 @@ export default function Shoots() {
     },
   });
 
+  const deleteShoot = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('shoots').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shoots'] });
+      toast.success('Shoot deleted');
+    },
+    onError: () => toast.error('Failed to delete shoot'),
+  });
+
   const filteredShoots = shoots.filter((shoot) => {
     if (clientFilter !== 'all' && shoot.client_id !== clientFilter) return false;
     if (monthFilter !== 'all' && shoot.month_number.toString() !== monthFilter) return false;
@@ -224,7 +236,10 @@ export default function Shoots() {
             getItemId={(shoot) => shoot.id}
             renderItem={renderShootCard}
             emptyMessage="No shoots"
+            onItemMove={(id, newStatus) => updateShootStatus.mutate({ id, status: newStatus as ShootStatus })}
+            onItemDelete={(id) => deleteShoot.mutateAsync(id)}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['shoots'] })}
+            deleteConfirmMessage="Are you sure you want to delete this shoot? This action cannot be undone."
           />
         )}
       </div>

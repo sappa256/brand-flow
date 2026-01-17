@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ClientFormDialog } from '@/components/clients/ClientFormDialog';
+import { toast } from 'sonner';
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -47,6 +48,21 @@ export default function Clients() {
 
   const handleSuccess = () => {
     fetchClients();
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', clientId);
+
+    if (error) {
+      toast.error('Failed to delete client');
+      return;
+    }
+
+    setClients(prev => prev.filter(c => c.id !== clientId));
+    toast.success('Client deleted successfully');
   };
 
   const columns = [
@@ -148,6 +164,8 @@ export default function Clients() {
         getRowId={(client) => client.id}
         emptyMessage="No clients yet. Convert a proposal to create your first client."
         onRefresh={fetchClients}
+        onDelete={handleDeleteClient}
+        deleteConfirmMessage="Are you sure you want to delete this client? This will also delete associated contracts, strategies, shoots, reels, and calendar entries."
       />
 
       <ClientFormDialog
