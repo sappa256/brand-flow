@@ -152,6 +152,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          amount_received: number | null
           client_id: string
           contract_status: Database["public"]["Enums"]["contract_status"]
           created_at: string
@@ -159,6 +160,7 @@ export type Database = {
           end_date: string
           id: string
           monthly_retainer: number
+          payment_notes: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           renewal_probability:
             | Database["public"]["Enums"]["renewal_probability"]
@@ -167,6 +169,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amount_received?: number | null
           client_id: string
           contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
@@ -174,6 +177,7 @@ export type Database = {
           end_date: string
           id?: string
           monthly_retainer: number
+          payment_notes?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           renewal_probability?:
             | Database["public"]["Enums"]["renewal_probability"]
@@ -182,6 +186,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount_received?: number | null
           client_id?: string
           contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
@@ -189,6 +194,7 @@ export type Database = {
           end_date?: string
           id?: string
           monthly_retainer?: number
+          payment_notes?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           renewal_probability?:
             | Database["public"]["Enums"]["renewal_probability"]

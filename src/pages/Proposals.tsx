@@ -52,44 +52,58 @@ export default function Proposals() {
   };
 
   const handleProposalMove = async (proposalId: string, newStatus: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) {
+      toast.error('Proposal not found');
+      return;
+    }
+
+    // Prevent moving if already in the same status
+    if (proposal.status === newStatus) {
+      return;
+    }
+
     const updateData: { status: ProposalStatus; accepted_date?: string; sent_date?: string } = { 
       status: newStatus as ProposalStatus 
     };
     
     // Auto-set dates based on status
-    if (newStatus === 'sent') {
-      const proposal = proposals.find(p => p.id === proposalId);
-      if (proposal && !proposal.sent_date) {
-        updateData.sent_date = new Date().toISOString().split('T')[0];
+    if (newStatus === 'sent' && !proposal.sent_date) {
+      updateData.sent_date = new Date().toISOString().split('T')[0];
+    }
+    if (newStatus === 'accepted' && !proposal.accepted_date) {
+      updateData.accepted_date = new Date().toISOString().split('T')[0];
+    }
+
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .update(updateData)
+        .eq('id', proposalId);
+
+      if (error) {
+        console.error('Proposal update error:', error);
+        toast.error('Failed to update proposal status: ' + error.message);
+        return;
       }
-    }
-    if (newStatus === 'accepted') {
-      const proposal = proposals.find(p => p.id === proposalId);
-      if (proposal && !proposal.accepted_date) {
-        updateData.accepted_date = new Date().toISOString().split('T')[0];
+
+      // Update local state
+      setProposals(prev => prev.map(p => 
+        p.id === proposalId 
+          ? { ...p, status: newStatus as ProposalStatus, ...updateData } 
+          : p
+      ));
+      
+      if (newStatus === 'accepted') {
+        toast.success('Proposal accepted! Client, Contract & Strategy created automatically.');
+        // Refresh to get the latest data
+        setTimeout(() => fetchProposals(), 500);
+      } else {
+        toast.success('Proposal moved successfully');
       }
-    }
-
-    const { error } = await supabase
-      .from('proposals')
-      .update(updateData)
-      .eq('id', proposalId);
-
-    if (error) {
-      toast.error('Failed to update proposal status');
-      return;
-    }
-
-    setProposals(prev => prev.map(proposal => 
-      proposal.id === proposalId 
-        ? { ...proposal, status: newStatus as ProposalStatus, ...updateData } 
-        : proposal
-    ));
-    
-    if (newStatus === 'accepted') {
-      toast.success('Proposal accepted! Client, Contract & Strategy created automatically.');
-    } else {
-      toast.success('Proposal moved successfully');
+    } catch (err: any) {
+      console.error('Proposal move error:', err);
+      toast.error('Failed to update proposal: ' + (err.message || 'Unknown error'));
     }
   };
 

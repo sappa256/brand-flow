@@ -122,6 +122,8 @@ export interface Contract {
   payment_status: PaymentStatus;
   contract_status: ContractStatus;
   renewal_probability: RenewalProbability | null;
+  amount_received: number;
+  payment_notes: string | null;
   created_at: string;
   updated_at: string;
   // Joined data

@@ -149,9 +149,22 @@ export default function Contracts() {
     {
       key: 'payment',
       header: 'Payment',
-      render: (contract: ContractWithClient) => (
-        <StatusBadge status={contract.payment_status} />
-      ),
+      render: (contract: ContractWithClient) => {
+        const totalValue = contract.monthly_retainer * contract.duration_months;
+        const received = contract.amount_received || 0;
+        const percentage = totalValue > 0 ? Math.round((received / totalValue) * 100) : 0;
+        
+        return (
+          <div className="space-y-1">
+            <StatusBadge status={contract.payment_status} />
+            {received > 0 && (
+              <p className="text-xs text-muted-foreground">
+                ₹{received.toLocaleString('en-IN')} ({percentage}%)
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'status',

@@ -850,6 +850,8 @@ export default function Settings() {
                         payment_status: 'pending' as const,
                         contract_status: 'active' as const,
                         renewal_probability: 'high' as const,
+                        amount_received: 0,
+                        payment_notes: null,
                         created_at: now.toISOString(),
                         updated_at: now.toISOString(),
                         client: sampleClient,

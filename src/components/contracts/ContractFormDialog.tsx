@@ -39,6 +39,8 @@ const contractFormSchema = z.object({
   contract_status: z.enum(['active', 'ending_soon', 'renewed', 'closed']),
   payment_status: z.enum(['paid', 'pending', 'overdue']),
   renewal_probability: z.enum(['high', 'medium', 'low']).optional().nullable(),
+  amount_received: z.number().min(0, 'Amount must be positive'),
+  payment_notes: z.string().optional().nullable(),
 });
 
 type ContractFormValues = z.infer<typeof contractFormSchema>;
@@ -71,6 +73,8 @@ export function ContractFormDialog({
       contract_status: 'active',
       payment_status: 'pending',
       renewal_probability: 'medium',
+      amount_received: 0,
+      payment_notes: '',
     },
   });
 
@@ -89,6 +93,8 @@ export function ContractFormDialog({
         contract_status: contract.contract_status,
         payment_status: contract.payment_status,
         renewal_probability: contract.renewal_probability,
+        amount_received: contract.amount_received || 0,
+        payment_notes: contract.payment_notes || '',
       });
     } else {
       form.reset({
@@ -100,6 +106,8 @@ export function ContractFormDialog({
         contract_status: 'active',
         payment_status: 'pending',
         renewal_probability: 'medium',
+        amount_received: 0,
+        payment_notes: '',
       });
     }
   }, [contract, form]);
@@ -140,6 +148,8 @@ export function ContractFormDialog({
         contract_status: values.contract_status as ContractStatus,
         payment_status: values.payment_status as PaymentStatus,
         renewal_probability: values.renewal_probability as RenewalProbability | null,
+        amount_received: values.amount_received,
+        payment_notes: values.payment_notes || null,
       };
 
       if (isEditing && contract) {
@@ -317,6 +327,61 @@ export function ContractFormDialog({
                         <SelectItem value="overdue">Overdue</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Payment Details */}
+            <div className="border-t border-border pt-4 mt-4">
+              <h3 className="text-sm font-medium mb-4">Payment Details</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="amount_received"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Amount Received (₹)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Total Contract Value</p>
+                  <p className="text-lg font-bold text-primary">
+                    ₹{(form.watch('monthly_retainer') * form.watch('duration_months')).toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Balance: ₹{((form.watch('monthly_retainer') * form.watch('duration_months')) - form.watch('amount_received')).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="payment_notes"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Payment Notes</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., First installment received, EMI plan, etc."
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
