@@ -231,7 +231,13 @@ export default function Shoots() {
 
       <ShootFormDialog
         open={isDialogOpen}
-        onOpenChange={handleCloseDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseDialog();
+          } else {
+            setIsDialogOpen(true);
+          }
+        }}
         shoot={editingShoot}
         clients={clients}
       />
