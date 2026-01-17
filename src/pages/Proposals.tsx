@@ -7,9 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ProposalFormDialog } from '@/components/proposals/ProposalFormDialog';
 import { Plus, FileText, Calendar, IndianRupee } from 'lucide-react';
-import type { Proposal } from '@/types/crm';
+import type { Proposal, ProposalStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 const PROPOSAL_COLUMNS = [
   { id: 'draft', title: 'Draft', count: 0 },
@@ -48,6 +49,48 @@ export default function Proposals() {
   const handleAddNew = () => {
     setSelectedProposal(null);
     setFormOpen(true);
+  };
+
+  const handleProposalMove = async (proposalId: string, newStatus: string) => {
+    const updateData: { status: ProposalStatus; accepted_date?: string; sent_date?: string } = { 
+      status: newStatus as ProposalStatus 
+    };
+    
+    // Auto-set dates based on status
+    if (newStatus === 'sent') {
+      const proposal = proposals.find(p => p.id === proposalId);
+      if (proposal && !proposal.sent_date) {
+        updateData.sent_date = new Date().toISOString().split('T')[0];
+      }
+    }
+    if (newStatus === 'accepted') {
+      const proposal = proposals.find(p => p.id === proposalId);
+      if (proposal && !proposal.accepted_date) {
+        updateData.accepted_date = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update(updateData)
+      .eq('id', proposalId);
+
+    if (error) {
+      toast.error('Failed to update proposal status');
+      return;
+    }
+
+    setProposals(prev => prev.map(proposal => 
+      proposal.id === proposalId 
+        ? { ...proposal, status: newStatus as ProposalStatus, ...updateData } 
+        : proposal
+    ));
+    
+    if (newStatus === 'accepted') {
+      toast.success('Proposal accepted! Client, Contract & Strategy created automatically.');
+    } else {
+      toast.success('Proposal moved successfully');
+    }
   };
 
   const renderProposalCard = (proposal: Proposal) => {
@@ -129,6 +172,7 @@ export default function Proposals() {
         getItemId={(proposal) => proposal.id}
         renderItem={renderProposalCard}
         emptyMessage="No proposals"
+        onItemMove={handleProposalMove}
         onRefresh={fetchProposals}
       />
 
