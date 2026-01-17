@@ -3,7 +3,6 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -12,17 +11,11 @@ import {
   DragOverEvent,
   useDroppable,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { PullToRefreshWrapper } from './PullToRefreshWrapper';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -57,44 +50,39 @@ interface KanbanBoardProps<T> {
   deleteConfirmMessage?: string;
 }
 
-interface SortableItemProps {
+interface DraggableItemProps {
   id: string;
   children: ReactNode;
   onDelete?: () => void;
 }
 
-function SortableItem({ id, children, onDelete }: SortableItemProps) {
+function DraggableItem({ id, children, onDelete }: DraggableItemProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({ id });
+  } = useDraggable({ id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "relative group animate-fade-in-up transition-all duration-200",
-        isDragging && "z-50 opacity-50 scale-[1.02]",
-        !isDragging && "hover-lift"
+        "relative group transition-all duration-200 cursor-grab active:cursor-grabbing touch-none",
+        isDragging && "z-50 opacity-50 scale-[1.02] shadow-xl",
+        !isDragging && "hover:shadow-md hover:-translate-y-0.5"
       )}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted/80 bg-card/50 backdrop-blur-sm shadow-soft"
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
       {onDelete && (
         <Button
           variant="ghost"
@@ -102,8 +90,10 @@ function SortableItem({ id, children, onDelete }: SortableItemProps) {
           className="absolute right-1 top-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-destructive/10 hover:text-destructive z-10"
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onDelete();
           }}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <Trash2 className="h-3 w-3" />
         </Button>
@@ -126,10 +116,10 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
   });
 
   return (
-    <div ref={setNodeRef} className="flex-shrink-0 w-[280px] xs:w-72 sm:w-80 animate-fade-in-up">
+    <div className="flex-shrink-0 w-[280px] xs:w-72 sm:w-80">
       <Card className={cn(
         "h-full bg-card/50 transition-all duration-300 backdrop-blur-sm",
-        isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-glow"
+        isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-lg"
       )}>
         <CardHeader className="py-2 sm:py-3 px-3 sm:px-4">
           <div className="flex items-center justify-between">
@@ -147,29 +137,25 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
         </CardHeader>
         <CardContent className="px-1.5 sm:px-2 pb-2">
           <ScrollArea className="h-[calc(100vh-320px)] sm:h-[calc(100vh-280px)]">
-            <SortableContext
-              items={items.map(i => i.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className={cn(
+            <div
+              ref={setNodeRef}
+              className={cn(
                 "space-y-2 p-2 min-h-[100px] rounded-xl transition-all duration-300",
                 isOver && "bg-primary/10"
-              )}>
-                {items.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm animate-pulse-soft">
-                    {emptyMessage}
-                  </div>
-                ) : (
-                  items.map((item, index) => (
-                    <div key={item.id} className={`stagger-${Math.min(index + 1, 6)}`}>
-                      <SortableItem id={item.id} onDelete={item.onDelete}>
-                        {item.element}
-                      </SortableItem>
-                    </div>
-                  ))
-                )}
-              </div>
-            </SortableContext>
+              )}
+            >
+              {items.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  {emptyMessage}
+                </div>
+              ) : (
+                items.map((item) => (
+                  <DraggableItem key={item.id} id={item.id} onDelete={item.onDelete}>
+                    {item.element}
+                  </DraggableItem>
+                ))
+              )}
+            </div>
           </ScrollArea>
         </CardContent>
       </Card>
@@ -214,14 +200,12 @@ export function KanbanBoard<T>({
     }
   };
 
+  // Simple pointer sensor with minimal delay for fast dragging
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -238,14 +222,12 @@ export function KanbanBoard<T>({
       return;
     }
 
-    // Check if we're over a column or an item
     const overId = over.id as string;
     const isColumn = columns.some(col => col.id === overId);
     
     if (isColumn) {
       setOverColumn(overId);
     } else {
-      // We're over an item, find which column it belongs to
       const overItem = items.find(item => getItemId(item) === overId);
       if (overItem) {
         setOverColumn(getItemColumn(overItem));
@@ -263,14 +245,11 @@ export function KanbanBoard<T>({
     const activeItemId = active.id as string;
     const overId = over.id as string;
 
-    // Determine target column
     let targetColumn: string | null = null;
     
-    // Check if dropped on a column
     if (columns.some(col => col.id === overId)) {
       targetColumn = overId;
     } else {
-      // Dropped on an item, get its column
       const overItem = items.find(item => getItemId(item) === overId);
       if (overItem) {
         targetColumn = getItemColumn(overItem);
@@ -318,9 +297,9 @@ export function KanbanBoard<T>({
         ))}
       </div>
       
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeItem ? (
-          <div className="rotate-2 scale-105 shadow-soft-lg animate-scale-in-bounce">
+          <div className="rotate-2 scale-105 shadow-2xl opacity-90">
             {renderItem(activeItem)}
           </div>
         ) : null}
@@ -349,7 +328,6 @@ export function KanbanBoard<T>({
     </DndContext>
   );
 
-  // Wrap with pull-to-refresh on mobile if onRefresh is provided
   if (isMobile && onRefresh) {
     return (
       <PullToRefreshWrapper onRefresh={onRefresh}>

@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HealthBadge } from '@/components/shared/HealthBadge';
 import { ContractWarningBadge } from '@/components/shared/ContractWarningBadge';
-import { Plus, Eye } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -129,15 +129,6 @@ export default function Clients() {
       header: 'Status',
       render: (client: Client) => <StatusBadge status={client.status} />,
     },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (client: Client) => (
-        <Button size="sm" variant="ghost" onClick={() => handleEditClient(client)}>
-          <Eye className="h-4 w-4" />
-        </Button>
-      ),
-    },
   ];
 
   if (isLoading) {
@@ -166,6 +157,7 @@ export default function Clients() {
         onRefresh={fetchClients}
         onDelete={handleDeleteClient}
         deleteConfirmMessage="Are you sure you want to delete this client? This will also delete associated contracts, strategies, shoots, reels, and calendar entries."
+        onRowClick={handleEditClient}
       />
 
       <ClientFormDialog
