@@ -10,6 +10,7 @@ import {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -21,9 +22,20 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { PullToRefreshWrapper } from './PullToRefreshWrapper';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 interface KanbanColumn {
   id: string;
@@ -40,15 +52,18 @@ interface KanbanBoardProps<T> {
   getItemId: (item: T) => string;
   emptyMessage?: string;
   onItemMove?: (itemId: string, newColumn: string) => void;
+  onItemDelete?: (itemId: string) => Promise<void>;
   onRefresh?: () => Promise<void> | void;
+  deleteConfirmMessage?: string;
 }
 
 interface SortableItemProps {
   id: string;
   children: ReactNode;
+  onDelete?: () => void;
 }
 
-function SortableItem({ id, children }: SortableItemProps) {
+function SortableItem({ id, children, onDelete }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -80,6 +95,19 @@ function SortableItem({ id, children }: SortableItemProps) {
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
+      {onDelete && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 top-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-destructive/10 hover:text-destructive z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      )}
       {children}
     </div>
   );
@@ -87,14 +115,18 @@ function SortableItem({ id, children }: SortableItemProps) {
 
 interface DroppableColumnProps {
   column: KanbanColumn;
-  items: { id: string; element: ReactNode }[];
+  items: { id: string; element: ReactNode; onDelete?: () => void }[];
   emptyMessage: string;
   isOver: boolean;
 }
 
 function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
+
   return (
-    <div className="flex-shrink-0 w-[280px] xs:w-72 sm:w-80 animate-fade-in-up">
+    <div ref={setNodeRef} className="flex-shrink-0 w-[280px] xs:w-72 sm:w-80 animate-fade-in-up">
       <Card className={cn(
         "h-full bg-card/50 transition-all duration-300 backdrop-blur-sm",
         isOver && "ring-2 ring-primary/50 bg-primary/5 shadow-glow"
@@ -130,7 +162,7 @@ function DroppableColumn({ column, items, emptyMessage, isOver }: DroppableColum
                 ) : (
                   items.map((item, index) => (
                     <div key={item.id} className={`stagger-${Math.min(index + 1, 6)}`}>
-                      <SortableItem id={item.id}>
+                      <SortableItem id={item.id} onDelete={item.onDelete}>
                         {item.element}
                       </SortableItem>
                     </div>
@@ -153,11 +185,34 @@ export function KanbanBoard<T>({
   getItemId,
   emptyMessage = 'No items',
   onItemMove,
+  onItemDelete,
   onRefresh,
+  deleteConfirmMessage = 'Are you sure you want to delete this item? This action cannot be undone.',
 }: KanbanBoardProps<T>) {
   const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (itemId: string) => {
+    setItemToDelete(itemId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete || !onItemDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onItemDelete(itemToDelete);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -238,9 +293,10 @@ export function KanbanBoard<T>({
         id: getItemId(item),
         element: renderItem(item),
         item,
+        onDelete: onItemDelete ? () => handleDeleteClick(getItemId(item)) : undefined,
       }));
     return acc;
-  }, {} as Record<string, { id: string; element: ReactNode; item: T }[]>);
+  }, {} as Record<string, { id: string; element: ReactNode; item: T; onDelete?: () => void }[]>);
 
   const boardContent = (
     <DndContext
@@ -269,6 +325,27 @@ export function KanbanBoard<T>({
           </div>
         ) : null}
       </DragOverlay>
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirmMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DndContext>
   );
 
