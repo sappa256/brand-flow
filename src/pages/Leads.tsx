@@ -75,6 +75,21 @@ export default function Leads() {
     toast.success('Lead moved successfully');
   };
 
+  const handleLeadDelete = async (leadId: string) => {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', leadId);
+
+    if (error) {
+      toast.error('Failed to delete lead');
+      return;
+    }
+
+    setLeads(prev => prev.filter(l => l.id !== leadId));
+    toast.success('Lead deleted successfully');
+  };
+
   const renderLeadCard = (lead: Lead) => (
     <Card 
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -150,7 +165,9 @@ export default function Leads() {
         renderItem={renderLeadCard}
         emptyMessage="No leads"
         onItemMove={handleLeadMove}
+        onItemDelete={handleLeadDelete}
         onRefresh={fetchLeads}
+        deleteConfirmMessage="Are you sure you want to delete this lead? This action cannot be undone."
       />
 
       <LeadFormDialog

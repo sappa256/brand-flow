@@ -93,6 +93,21 @@ export default function Proposals() {
     }
   };
 
+  const handleProposalDelete = async (proposalId: string) => {
+    const { error } = await supabase
+      .from('proposals')
+      .delete()
+      .eq('id', proposalId);
+
+    if (error) {
+      toast.error('Failed to delete proposal');
+      return;
+    }
+
+    setProposals(prev => prev.filter(p => p.id !== proposalId));
+    toast.success('Proposal deleted successfully');
+  };
+
   const renderProposalCard = (proposal: Proposal) => {
     const totalValue = proposal.monthly_fee * proposal.contract_duration_months;
     
@@ -173,7 +188,9 @@ export default function Proposals() {
         renderItem={renderProposalCard}
         emptyMessage="No proposals"
         onItemMove={handleProposalMove}
+        onItemDelete={handleProposalDelete}
         onRefresh={fetchProposals}
+        deleteConfirmMessage="Are you sure you want to delete this proposal? This action cannot be undone."
       />
 
       <ProposalFormDialog
