@@ -45,6 +45,11 @@ export default function Contracts() {
     setDialogOpen(true);
   };
 
+  const handleEditContract = (contract: ContractWithClient) => {
+    setSelectedContract(contract);
+    setDialogOpen(true);
+  };
+
   const handleSuccess = () => {
     fetchContracts();
   };
@@ -249,6 +254,7 @@ export default function Contracts() {
         onRefresh={fetchContracts}
         onDelete={handleDeleteContract}
         deleteConfirmMessage="Are you sure you want to delete this contract? This action cannot be undone."
+        onRowClick={handleEditContract}
       />
 
       <ContractFormDialog
