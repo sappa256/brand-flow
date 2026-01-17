@@ -71,6 +71,18 @@ export default function Cycles() {
     onError: (error: Error) => toast.error(error.message || 'Failed to update status'),
   });
 
+  const deleteCycle = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('monthly_cycles').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthly_cycles'] });
+      toast.success('Cycle deleted');
+    },
+    onError: () => toast.error('Failed to delete cycle'),
+  });
+
   const filteredCycles = cycles.filter((c) => clientFilter === 'all' || c.client_id === clientFilter);
 
   const getClientName = (clientId: string) => clients.find((c) => c.id === clientId)?.client_name || 'Unknown';
@@ -226,7 +238,9 @@ export default function Cycles() {
             renderItem={renderCard}
             emptyMessage="No cycles"
             onItemMove={(id, newStatus) => updateStatus.mutate({ id, status: newStatus as CycleStatus })}
+            onItemDelete={(id) => deleteCycle.mutateAsync(id)}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['monthly_cycles'] })}
+            deleteConfirmMessage="Are you sure you want to delete this cycle? This action cannot be undone."
           />
         )}
       </div>

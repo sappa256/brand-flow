@@ -58,6 +58,21 @@ export default function Contracts() {
     }
   };
 
+  const handleDeleteContract = async (contractId: string) => {
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', contractId);
+
+    if (error) {
+      toast.error('Failed to delete contract');
+      return;
+    }
+
+    setContracts(prev => prev.filter(c => c.id !== contractId));
+    toast.success('Contract deleted successfully');
+  };
+
   const getDaysUntilEnd = (endDate: string) => {
     return differenceInDays(new Date(endDate), new Date());
   };
@@ -232,6 +247,8 @@ export default function Contracts() {
         getRowId={(contract) => contract.id}
         emptyMessage="No contracts yet."
         onRefresh={fetchContracts}
+        onDelete={handleDeleteContract}
+        deleteConfirmMessage="Are you sure you want to delete this contract? This action cannot be undone."
       />
 
       <ContractFormDialog
