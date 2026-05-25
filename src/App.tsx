@@ -20,12 +20,27 @@ import Cycles from "./pages/Cycles";
 import Settings from "./pages/Settings";
 import Files from "./pages/Files";
 import NotFound from "./pages/NotFound";
+import ClientPortal from "./pages/ClientPortal";
+import Onboarding from "./pages/Onboarding";
+import OrgSettings from "./pages/OrgSettings";
+import VideoReview from "./pages/VideoReview";
+import AnalyticsEngine from "./pages/AnalyticsEngine";
+import AutomationBuilder from "./pages/AutomationBuilder";
+import BillingCenter from "./pages/BillingCenter";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+function ProtectedRoute({ 
+  children, 
+  allowNoOrg = false,
+  requiredPermission 
+}: { 
+  children: React.ReactNode; 
+  allowNoOrg?: boolean;
+  requiredPermission?: string;
+}) {
+  const { user, isLoading, organizations, hasPermission } = useAuth();
 
   if (isLoading) {
     return (
@@ -39,6 +54,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" replace />;
   }
 
+  if (organizations.length === 0 && !allowNoOrg) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -46,18 +69,25 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
+      <Route path="/approve/:token" element={<ClientPortal />} />
+      <Route path="/onboarding" element={<ProtectedRoute allowNoOrg={true}><Onboarding /></ProtectedRoute>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/owner-dashboard" element={<ProtectedRoute><OwnerDashboard /></ProtectedRoute>} />
+      <Route path="/owner-dashboard" element={<ProtectedRoute requiredPermission="view_audit_logs"><OwnerDashboard /></ProtectedRoute>} />
       <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
       <Route path="/proposals" element={<ProtectedRoute><Proposals /></ProtectedRoute>} />
       <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-      <Route path="/contracts" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
+      <Route path="/contracts" element={<ProtectedRoute requiredPermission="view_contracts"><Contracts /></ProtectedRoute>} />
       <Route path="/reels" element={<ProtectedRoute><Reels /></ProtectedRoute>} />
+      <Route path="/review/:id" element={<ProtectedRoute><VideoReview /></ProtectedRoute>} />
       <Route path="/shoots" element={<ProtectedRoute><Shoots /></ProtectedRoute>} />
       <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/cycles" element={<ProtectedRoute><Cycles /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/org-settings" element={<ProtectedRoute requiredPermission="manage_clients"><OrgSettings /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><AnalyticsEngine /></ProtectedRoute>} />
+      <Route path="/automation" element={<ProtectedRoute><AutomationBuilder /></ProtectedRoute>} />
+      <Route path="/billing" element={<ProtectedRoute requiredPermission="manage_billing"><BillingCenter /></ProtectedRoute>} />
       <Route path="/files" element={<ProtectedRoute><Files /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

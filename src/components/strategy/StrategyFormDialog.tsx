@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Sparkles } from 'lucide-react';
+import { AiAssistantPanel } from '@/components/shared/AiAssistantPanel';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Strategy = Tables<'strategies'>;
@@ -40,7 +42,8 @@ interface Props {
 export function StrategyFormDialog({ open, onOpenChange, strategy, clients }: Props) {
   const queryClient = useQueryClient();
   const isEditing = !!strategy;
-
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -202,8 +205,20 @@ export function StrategyFormDialog({ open, onOpenChange, strategy, clients }: Pr
 
             <FormField control={form.control} name="brand_positioning_summary" render={({ field }) => (
               <FormItem>
-                <FormLabel>Brand Positioning Summary</FormLabel>
-                <FormControl><Textarea rows={2} {...field} /></FormControl>
+                <div className="flex items-center justify-between">
+                  <FormLabel>Brand Positioning Summary</FormLabel>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAiOpen(true)}
+                    className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 text-xs gap-1.5 h-7 px-2 border border-purple-500/20"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Assistant
+                  </Button>
+                </div>
+                <FormControl><Textarea rows={3} placeholder="Describe the target audience, tone of voice, content style, etc." {...field} /></FormControl>
               </FormItem>
             )} />
 
@@ -234,6 +249,18 @@ export function StrategyFormDialog({ open, onOpenChange, strategy, clients }: Pr
             </div>
           </form>
         </Form>
+        
+        <AiAssistantPanel
+          isOpen={isAiOpen}
+          onClose={() => setIsAiOpen(false)}
+          onSelectContent={(text) => {
+            const currentVal = form.getValues('brand_positioning_summary') || '';
+            const newVal = currentVal ? `${currentVal}\n\n${text}` : text;
+            form.setValue('brand_positioning_summary', newVal, { shouldDirty: true });
+          }}
+          initialNiche={clients.find(c => c.id === form.watch('client_id'))?.client_name || ''}
+          initialTopic=""
+        />
       </DialogContent>
     </Dialog>
   );

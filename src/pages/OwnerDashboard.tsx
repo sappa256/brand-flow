@@ -20,7 +20,9 @@ import {
   RefreshCw, 
   Building2,
   XCircle,
-  AlertOctagon
+  AlertOctagon,
+  Users,
+  Link as LinkIcon
 } from 'lucide-react';
 import { format, differenceInHours, isToday, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -34,11 +36,7 @@ type MonthlyCycle = Tables<'monthly_cycles'>;
 
 export default function OwnerDashboard() {
   const { hasAnyRole, isLoading: authLoading } = useAuth();
-
-  // Redirect non-admins
-  if (!authLoading && !hasAnyRole(['admin'])) {
-    return <Navigate to="/" replace />;
-  }
+  const isAdmin = hasAnyRole(['admin']);
 
   // Shoots scheduled for today
   const { data: todayShoots = [], isLoading: shootsLoading } = useQuery({
@@ -53,6 +51,7 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Reels stuck in editing for > 48 hours
@@ -73,6 +72,7 @@ export default function OwnerDashboard() {
         return differenceInHours(now, lastUpdate) > 48;
       });
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Posts due today
@@ -88,6 +88,7 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Missed posts in last 7 days
@@ -104,6 +105,7 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Clients in contract month 5+
@@ -119,6 +121,7 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Clients with health_status = 'risk'
@@ -133,6 +136,7 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Delayed or blocked cycles
@@ -148,9 +152,58 @@ export default function OwnerDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !authLoading && isAdmin,
   });
 
-  const isLoading = shootsLoading || reelsLoading || postsLoading || missedLoading || contractsLoading || riskLoading || cyclesLoading;
+  // Fetch team workload (editors and their active reel assignments)
+  const { data: teamWorkload = [], isLoading: workloadLoading } = useQuery({
+    queryKey: ['team-workload'],
+    queryFn: async () => {
+      // 1. Get user IDs with 'editor' role
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'editor');
+
+      if (rolesError) throw rolesError;
+      if (!userRoles || userRoles.length === 0) return [];
+
+      const editorIds = userRoles.map(ur => ur.user_id);
+
+      // 2. Fetch profiles for these editors
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', editorIds);
+
+      if (profilesError) throw profilesError;
+      if (!profiles) return [];
+
+      // 3. Fetch all active reels (edit_status is not 'approved')
+      const { data: activeReels, error: reelsError } = await supabase
+        .from('reels')
+        .select('id, editor_id, client_id, reel_number, edit_status')
+        .neq('edit_status', 'approved');
+
+      if (reelsError) throw reelsError;
+
+      // 4. Map active reels to editors
+      return profiles.map(profile => {
+        const assignedReels = activeReels?.filter(r => r.editor_id === profile.id) || [];
+        return {
+          id: profile.id,
+          fullName: profile.full_name || 'Unnamed Editor',
+          email: profile.email || '',
+          avatarUrl: profile.avatar_url,
+          activeReelsCount: assignedReels.length,
+          reels: assignedReels
+        };
+      }).sort((a, b) => b.activeReelsCount - a.activeReelsCount);
+    },
+    enabled: !authLoading && isAdmin,
+  });
+
+  const isLoading = shootsLoading || reelsLoading || postsLoading || missedLoading || contractsLoading || riskLoading || cyclesLoading || workloadLoading;
 
   if (authLoading) {
     return (
@@ -162,6 +215,11 @@ export default function OwnerDashboard() {
         </div>
       </AppLayout>
     );
+  }
+
+  // Redirect non-admins
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -489,6 +547,76 @@ export default function OwnerDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Team Workload Monitor */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-purple-400" />
+                  Team Workload Monitor
+                </CardTitle>
+                <Link to="/settings">
+                  <Button variant="ghost" size="sm">Manage Team</Button>
+                </Link>
+              </div>
+              <CardDescription>Monitor active reel assignments per editor (unapproved drafts)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {workloadLoading ? (
+                <Skeleton className="h-20" />
+              ) : teamWorkload.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">No editors registered in settings.</p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {teamWorkload.map((editor: any) => {
+                    const count = editor.activeReelsCount;
+                    const statusColor = 
+                      count >= 6 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      count >= 3 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                      'bg-green-500/20 text-green-400 border-green-500/30';
+                    
+                    const statusText = 
+                      count >= 6 ? 'Heavy' :
+                      count >= 3 ? 'Optimal' :
+                      'Light';
+
+                    const percent = Math.min((count / 8) * 100, 100);
+
+                    return (
+                      <div key={editor.id} className="p-4 rounded-xl border border-white/5 bg-background/30 backdrop-blur-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-sm">{editor.fullName}</h4>
+                            <p className="text-xs text-muted-foreground">{editor.email}</p>
+                          </div>
+                          <Badge variant="outline" className={`${statusColor} text-[10px] font-bold uppercase`}>
+                            {count} Reels ({statusText})
+                          </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Capacity</span>
+                            <span>{count}/8 Reels</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                count >= 6 ? 'bg-red-500' :
+                                count >= 3 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

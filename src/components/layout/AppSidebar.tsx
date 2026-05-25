@@ -22,6 +22,8 @@ import {
   TrendingUp,
   ClipboardList,
   Video,
+  Cpu,
+  CreditCard,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,6 +48,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import type { AppRole } from '@/types/crm';
 import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface NavItem {
   title: string;
@@ -96,13 +99,16 @@ const navGroups: NavGroup[] = [
 
 const standaloneItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },
+  { title: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'sales', 'strategy'] },
+  { title: 'Automation', href: '/automation', icon: Cpu, roles: ['admin', 'strategy'] },
+  { title: 'Billing', href: '/billing', icon: CreditCard, roles: ['admin'] },
   { title: 'Owner Ops', href: '/owner-dashboard', icon: Command, roles: ['admin'] },
   { title: 'Files', href: '/files', icon: FolderOpen, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
-  const { profile, roles, signOut, hasAnyRole } = useAuth();
+  const { profile, roles, signOut, hasAnyRole, organizations, currentOrganization, setActiveOrganization } = useAuth();
   const { theme, setTheme } = useTheme();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -139,7 +145,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-4 space-y-3">
         <Link 
           to="/" 
           className="flex items-center gap-3 group cursor-pointer"
@@ -153,12 +159,32 @@ export function AppSidebar() {
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
           </div>
           <div className="transition-all duration-300 group-hover:translate-x-1">
-            <h1 className="font-semibold text-sidebar-foreground transition-colors duration-300 group-hover:text-primary">
-              Montaz Medias
+            <h1 className="font-semibold text-sidebar-foreground transition-colors duration-300 group-hover:text-primary leading-tight">
+              {currentOrganization?.name || 'Brand Flow'}
             </h1>
-            <p className="text-xs text-muted-foreground">CRM Dashboard</p>
+            <p className="text-[10px] text-muted-foreground">Workspace Command</p>
           </div>
         </Link>
+
+        {organizations.length > 1 && (
+          <div className="pt-1">
+            <Select 
+              value={currentOrganization?.id || ''} 
+              onValueChange={setActiveOrganization}
+            >
+              <SelectTrigger className="w-full bg-background/50 border-sidebar-border h-8 text-xs text-muted-foreground focus:ring-0">
+                <SelectValue placeholder="Switch Workspace" />
+              </SelectTrigger>
+              <SelectContent className="bg-sidebar border-sidebar-border text-white text-xs">
+                {organizations.map(org => (
+                  <SelectItem key={org.id} value={org.id} className="focus:bg-primary/20 focus:text-white">
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
@@ -296,10 +322,38 @@ export function AppSidebar() {
         {hasAnyRole(['admin']) && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
-              Admin
+              Admin & SaaS
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === '/org-settings'}
+                    className={cn(
+                      "relative overflow-hidden transition-all duration-300 ease-out",
+                      "hover:translate-x-1 hover:bg-sidebar-accent",
+                      location.pathname === '/org-settings' && "bg-primary/10 text-primary font-medium"
+                    )}
+                    onMouseEnter={() => setHoveredItem('/org-settings')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Link to="/org-settings" className="relative z-10 flex items-center gap-3">
+                      <Building2 
+                        className={cn(
+                          "h-4 w-4 transition-all duration-500",
+                          location.pathname === '/org-settings' && "text-primary"
+                        )} 
+                      />
+                      <span>Org Settings</span>
+                      
+                      {location.pathname === '/org-settings' && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full animate-scale-in" />
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 
@@ -320,7 +374,7 @@ export function AppSidebar() {
                           location.pathname === '/settings' && "text-primary"
                         )} 
                       />
-                      <span>Settings</span>
+                      <span>User Settings</span>
                       
                       {location.pathname === '/settings' && (
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full animate-scale-in" />

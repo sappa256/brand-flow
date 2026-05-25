@@ -8,11 +8,13 @@ import type { Contract, Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, IndianRupee, Plus, FileDown } from 'lucide-react';
+import { AlertTriangle, IndianRupee, Plus, FileDown, CreditCard, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { generateContractPdf } from '@/lib/contractPdfGenerator';
 import { toast } from 'sonner';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface ContractWithClient extends Contract {
   client: Client;
@@ -23,6 +25,7 @@ export default function Contracts() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [stripeCheckoutContract, setStripeCheckoutContract] = useState<ContractWithClient | null>(null);
 
   useEffect(() => {
     fetchContracts();
@@ -194,14 +197,33 @@ export default function Contracts() {
       key: 'actions',
       header: 'Actions',
       render: (contract: ContractWithClient) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => handleDownloadPdf(contract)}
-          title="Download Contract PDF"
-        >
-          <FileDown className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1 justify-end">
+          {contract.payment_status !== 'paid' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-purple-400 hover:text-purple-300 hover:bg-purple-950/20"
+              onClick={(e) => {
+                e.stopPropagation();
+                setStripeCheckoutContract(contract);
+              }}
+              title="Mock Stripe Checkout"
+            >
+              <CreditCard className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadPdf(contract);
+            }}
+            title="Download Contract PDF"
+          >
+            <FileDown className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -276,6 +298,129 @@ export default function Contracts() {
         contract={selectedContract}
         onSuccess={handleSuccess}
       />
+
+      {/* Mock Stripe Checkout Dialog */}
+      <Dialog open={!!stripeCheckoutContract} onOpenChange={(open) => !open && setStripeCheckoutContract(null)}>
+        <DialogContent className="max-w-xl bg-[#1A1A1E] text-white border-white/10 rounded-2xl overflow-hidden p-0">
+          <div className="grid grid-cols-1 md:grid-cols-12">
+            {/* Left Info Column */}
+            <div className="md:col-span-5 bg-black/40 p-6 flex flex-col justify-between border-r border-white/5">
+              <div className="space-y-6">
+                <div className="flex items-center gap-1.5 text-purple-400 font-bold uppercase tracking-wider text-xs">
+                  <ShieldCheck className="h-4 w-4" /> Secure checkout
+                </div>
+                <div className="space-y-2">
+                  <span className="text-muted-foreground text-xs block">Montaz Medias Retainer</span>
+                  <h3 className="font-bold text-lg text-white">
+                    {stripeCheckoutContract?.client?.client_name || 'Client Retainer'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground text-purple-300">
+                    {stripeCheckoutContract?.duration_months} Month Retainer Agreement
+                  </p>
+                </div>
+              </div>
+              <div className="pt-8">
+                <span className="text-[10px] text-muted-foreground uppercase block font-bold tracking-wider">Amount Due</span>
+                <span className="text-3xl font-extrabold text-white flex items-baseline gap-1">
+                  ₹{stripeCheckoutContract?.monthly_retainer.toLocaleString('en-IN')}
+                  <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Right Payment Column */}
+            <div className="md:col-span-7 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pay with Card</span>
+                <span className="text-purple-400 font-semibold text-xs flex items-center gap-1">Stripe Mockup</span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground uppercase font-semibold">Email</label>
+                  <Input 
+                    type="email" 
+                    value={stripeCheckoutContract?.client?.email || 'client@example.com'} 
+                    disabled 
+                    className="bg-black/30 border-white/10 text-sm h-9" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground uppercase font-semibold">Card Information</label>
+                  <div className="relative">
+                    <Input 
+                      type="text" 
+                      value="4242 •••• •••• 4242" 
+                      disabled 
+                      className="bg-black/30 border-white/10 text-sm h-9 pr-10 font-mono" 
+                    />
+                    <CreditCard className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <Input 
+                      type="text" 
+                      value="12 / 29" 
+                      disabled 
+                      className="bg-black/30 border-white/10 text-sm h-9 font-mono text-center" 
+                    />
+                    <Input 
+                      type="text" 
+                      value="•••" 
+                      disabled 
+                      className="bg-black/30 border-white/10 text-sm h-9 font-mono text-center" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground uppercase font-semibold">Name on Card</label>
+                  <Input 
+                    type="text" 
+                    value={stripeCheckoutContract?.client?.client_name || 'Cardholder Name'} 
+                    disabled 
+                    className="bg-black/30 border-white/10 text-sm h-9" 
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 space-y-2">
+                <Button 
+                  onClick={async () => {
+                    if (!stripeCheckoutContract) return;
+                    setIsLoading(true);
+                    try {
+                      const totalVal = stripeCheckoutContract.monthly_retainer * stripeCheckoutContract.duration_months;
+                      const { error } = await supabase
+                        .from('contracts')
+                        .update({
+                          payment_status: 'paid',
+                          amount_received: totalVal
+                        })
+                        .eq('id', stripeCheckoutContract.id);
+
+                      if (error) throw error;
+                      toast.success('Payment simulated successfully! Retainer marked as Paid.');
+                      setStripeCheckoutContract(null);
+                      fetchContracts();
+                    } catch (err: any) {
+                      toast.error('Simulation failed: ' + err.message);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold h-10 flex items-center justify-center gap-1.5"
+                >
+                  Pay ₹{stripeCheckoutContract?.monthly_retainer.toLocaleString('en-IN')}
+                </Button>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  By clicking Pay, you agree to authorize a simulated transaction.
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

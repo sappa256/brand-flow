@@ -16,11 +16,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download, Bell } from 'lucide-react';
+import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download, Bell, Sparkles } from 'lucide-react';
 import type { AppRole } from '@/types/crm';
 import { Navigate } from 'react-router-dom';
 import { generateContractPdf } from '@/lib/contractPdfGenerator';
 import type { Contract, Client, PlanType } from '@/types/crm';
+import { getAiConfig, saveAiConfig } from '@/lib/aiService';
 
 interface NotificationPreferences {
   email_enabled: boolean;
@@ -125,10 +126,38 @@ function NotificationLogTable({ userId }: { userId?: string }) {
 }
 
 export default function Settings() {
-  const { hasRole, user } = useAuth();
+  const { hasRole, user, isLoading: authLoading } = useAuth();
+  const isAdmin = hasRole('admin');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // AI Config states
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | 'custom'>('gemini');
+  const [aiModel, setAiModel] = useState<string>('gemini-1.5-flash');
+  const [aiKey, setAiKey] = useState<string>('');
+  const [aiBaseUrl, setAiBaseUrl] = useState<string>('');
+
+  useEffect(() => {
+    const config = getAiConfig();
+    setAiProvider(config.provider);
+    setAiModel(config.model);
+    setAiKey(config.apiKey);
+    setAiBaseUrl(config.baseUrl || '');
+  }, []);
+
+  const handleSaveAiConfig = () => {
+    saveAiConfig({
+      provider: aiProvider,
+      model: aiModel,
+      apiKey: aiKey,
+      baseUrl: aiBaseUrl,
+    });
+    toast({
+      title: "AI Configuration Saved",
+      description: "Your local AI settings have been successfully updated.",
+    });
+  };
+
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>('sales');
@@ -219,11 +248,6 @@ export default function Settings() {
     },
   });
 
-  // Check admin access
-  if (!hasRole('admin')) {
-    return <Navigate to="/" replace />;
-  }
-
   // Fetch all team members with their roles
   const { data: teamMembers = [], isLoading } = useQuery({
     queryKey: ['team-members'],
@@ -256,6 +280,7 @@ export default function Settings() {
 
       return members;
     },
+    enabled: !authLoading && isAdmin,
   });
 
   // Add role mutation
@@ -294,6 +319,18 @@ export default function Settings() {
       toast({ title: 'Failed to remove role', description: error.message, variant: 'destructive' });
     },
   });
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -342,6 +379,10 @@ export default function Settings() {
             <TabsTrigger value="preferences" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <SettingsIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Preferences</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">AI Config</span>
             </TabsTrigger>
           </TabsList>
 
@@ -958,6 +999,102 @@ export default function Settings() {
                   </div>
                 </div>
                 <Button className="mt-4 w-full sm:w-auto">Save Preferences</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* AI Settings Tab */}
+          <TabsContent value="ai" className="space-y-6">
+            <Card className="backdrop-blur-md bg-card/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-400" />
+                  AI Assistant Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure your AI providers and models. API keys are stored strictly in your browser's local storage and are never sent to our servers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="aiProvider" className="text-sm font-semibold">Active Provider</Label>
+                    <Select 
+                      value={aiProvider} 
+                      onValueChange={(val: any) => {
+                        setAiProvider(val);
+                        // Auto-fill default models
+                        if (val === 'gemini') setAiModel('gemini-1.5-flash');
+                        else if (val === 'openai') setAiModel('gpt-4o');
+                        else if (val === 'anthropic') setAiModel('claude-3-5-sonnet-20241022');
+                        else if (val === 'custom') setAiModel('llama3');
+                      }}
+                    >
+                      <SelectTrigger id="aiProvider" className="bg-background/50 border-white/10">
+                        <SelectValue placeholder="Select AI provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gemini">Google Gemini (Recommended)</SelectItem>
+                        <SelectItem value="openai">OpenAI (ChatGPT)</SelectItem>
+                        <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                        <SelectItem value="custom">Custom (Local Ollama / vLLM)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aiModel" className="text-sm font-semibold">Model Name</Label>
+                    <Input 
+                      id="aiModel" 
+                      placeholder="e.g. gemini-1.5-flash, gpt-4o, claude-3-5-sonnet-20241022" 
+                      value={aiModel} 
+                      onChange={(e) => setAiModel(e.target.value)}
+                      className="bg-background/50 border-white/10"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Specify the exact model identifier to use with the selected provider.
+                    </p>
+                  </div>
+
+                  {aiProvider === 'custom' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="aiBaseUrl" className="text-sm font-semibold">Custom API Base URL</Label>
+                      <Input 
+                        id="aiBaseUrl" 
+                        placeholder="e.g. http://localhost:11434/v1/chat/completions" 
+                        value={aiBaseUrl} 
+                        onChange={(e) => setAiBaseUrl(e.target.value)}
+                        className="bg-background/50 border-white/10"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The full HTTP endpoint URL to send chat completion requests to.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aiKey" className="text-sm font-semibold">
+                      API Key {aiProvider === 'custom' ? '(Optional)' : ''}
+                    </Label>
+                    <Input 
+                      id="aiKey" 
+                      type="password" 
+                      placeholder={aiProvider === 'custom' ? "Enter bearer token if required" : "Enter your API key"} 
+                      value={aiKey} 
+                      onChange={(e) => setAiKey(e.target.value)}
+                      className="bg-background/50 border-white/10"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your key will only be used directly from your browser to complete generation requests.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
+                  <Button onClick={handleSaveAiConfig} className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white">
+                    Save AI Settings
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KanbanBoard } from '@/components/shared/KanbanBoard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { ReelFormDialog } from '@/components/reels/ReelFormDialog';
-import { Plus, User, Hash, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, User, Hash, AlertTriangle, CheckCircle, Video } from 'lucide-react';
 import type { Reel, EditStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ interface Client {
 }
 
 export default function Reels() {
+  const navigate = useNavigate();
   const [reels, setReels] = useState<Reel[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -182,6 +184,19 @@ export default function Reels() {
             {reel.notes}
           </p>
         )}
+
+        <Button
+          size="sm"
+          variant="secondary"
+          className="w-full text-xs font-semibold mt-2 border-white/10 hover:bg-purple-600 hover:text-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/review/${reel.id}`);
+          }}
+        >
+          <Video className="h-3.5 w-3.5 mr-1" />
+          Review Video
+        </Button>
       </CardContent>
     </Card>
   );

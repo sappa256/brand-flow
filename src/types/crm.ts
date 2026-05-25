@@ -230,3 +230,133 @@ export interface KanbanColumn<T> {
   title: string;
   items: T[];
 }
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  branding: {
+    theme?: string;
+    logoUrl?: string | null;
+  };
+  timezone: string;
+  billing_settings: {
+    plan?: string;
+    status?: string;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+  };
+  ai_settings: {
+    provider?: 'gemini' | 'openai' | 'anthropic' | 'custom';
+    model?: string;
+    customUrl?: string | null;
+  };
+  owner_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: AppRole;
+  created_at: string;
+  profile?: Profile;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: AppRole;
+  created_at: string;
+  token?: string;
+  expires_at?: string;
+  status?: 'pending' | 'accepted' | 'expired';
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface Role {
+  id: string;
+  tenant_id: string | null;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RolePermission {
+  id: string;
+  role_id: string;
+  permission_id: string;
+  created_at: string;
+}
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role_id: string;
+  tenant_id: string;
+  created_at: string;
+  role?: Role;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_id: string | null;
+  tenant_id: string;
+  entity_type: string;
+  entity_id: string;
+  action_type: 'insert' | 'update' | 'delete' | 'permission_change' | 'ai_generation' | 'billing_change' | 'login';
+  old_value: any | null;
+  new_value: any | null;
+  ip_address: string | null;
+  device_info: any | null;
+  created_at: string;
+  actor?: Profile | null;
+}
+
+export interface MediaAsset {
+  id: string;
+  tenant_id: string;
+  uploader_id: string | null;
+  client_id: string | null;
+  project_id: string | null;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  version: number;
+  category: 'drafts' | 'exports' | 'contracts' | 'assets';
+  tags: string[];
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  uploader?: Profile | null;
+  client?: Client | null;
+  project?: Reel | null;
+}
+
+export interface AiRequestHistory {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  provider: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost: number;
+  status: 'success' | 'error' | 'moderated';
+  error_message: string | null;
+  created_at: string;
+  user?: Profile | null;
+}
+

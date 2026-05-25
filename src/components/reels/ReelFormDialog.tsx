@@ -29,9 +29,10 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Reel, ScriptStatus, EditStatus, BatchType, PriorityType, Profile } from '@/types/crm';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useWorkflowValidation } from '@/hooks/useWorkflowValidation';
 import { ValidationMessage } from '@/components/shared/ValidationMessage';
+import { AiAssistantPanel } from '@/components/shared/AiAssistantPanel';
 
 const reelFormSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -68,6 +69,7 @@ export function ReelFormDialog({
   onSuccess,
 }: ReelFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const [editors, setEditors] = useState<Profile[]>([]);
   const [shootCompleted, setShootCompleted] = useState<boolean | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -456,12 +458,24 @@ export function ReelFormDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Notes & Script</FormLabel>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsAiOpen(true)}
+                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 text-xs gap-1.5 h-7 px-2 border border-purple-500/20"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      AI Assistant
+                    </Button>
+                  </div>
                   <FormControl>
                     <Textarea
-                      placeholder="Add notes about this reel..."
-                      className="resize-none"
-                      rows={3}
+                      placeholder="Add notes or video script about this reel..."
+                      className="resize-none font-sans"
+                      rows={4}
                       {...field}
                     />
                   </FormControl>
@@ -485,6 +499,18 @@ export function ReelFormDialog({
             </div>
           </form>
         </Form>
+        
+        <AiAssistantPanel
+          isOpen={isAiOpen}
+          onClose={() => setIsAiOpen(false)}
+          onSelectContent={(text) => {
+            const currentVal = form.getValues('notes') || '';
+            const newVal = currentVal ? `${currentVal}\n\n${text}` : text;
+            form.setValue('notes', newVal, { shouldDirty: true });
+          }}
+          initialNiche={clients.find(c => c.id === watchClientId)?.client_name || ''}
+          initialTopic=""
+        />
       </DialogContent>
     </Dialog>
   );
