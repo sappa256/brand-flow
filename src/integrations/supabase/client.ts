@@ -86,6 +86,30 @@ class MockQueryBuilder {
     return this;
   }
 
+  gte(column: string, value: any) {
+    this.filters.push((row) => row[column] >= value);
+    return this;
+  }
+
+  lte(column: string, value: any) {
+    this.filters.push((row) => row[column] <= value);
+    return this;
+  }
+
+  gt(column: string, value: any) {
+    this.filters.push((row) => row[column] > value);
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.filters.push((row) => row[column] < value);
+    return this;
+  }
+
+  or(filters: string) {
+    return this;
+  }
+
   in(column: string, values: any[]) {
     this.filters.push((row) => values.includes(row[column]));
     return this;
