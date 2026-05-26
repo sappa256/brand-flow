@@ -269,95 +269,141 @@ class MockQueryBuilder {
 
 // Pre-seed local database helper
 function initializeMockDb() {
-  if (!localStorage.getItem('db_profiles')) {
-    localStorage.setItem('db_profiles', JSON.stringify([
-      { id: 'user-admin-id', email: 'admin@montazmedias.com', full_name: 'Super Admin' }
-    ]));
-  }
-  if (!localStorage.getItem('db_organizations')) {
-    localStorage.setItem('db_organizations', JSON.stringify([
-      { 
-        id: 'org-id', 
-        name: 'Montaz Medias', 
-        slug: 'montaz-medias',
-        branding: { theme: 'dark', logoUrl: null },
-        timezone: 'Asia/Kolkata',
-        billing_settings: { plan: 'growth', status: 'active' },
-        ai_settings: { provider: 'gemini', model: 'gemini-1.5-flash' }
+  // Extract active user from session
+  let activeUserId = 'user-admin-id';
+  let activeUserEmail = 'admin@montazmedias.com';
+  let activeUserName = 'Super Admin';
+
+  const rawSession = localStorage.getItem('sb-ywwvdfudibmxlcsvcqih-auth-token');
+  if (rawSession) {
+    try {
+      const sessionObj = JSON.parse(rawSession);
+      if (sessionObj && sessionObj.user) {
+        activeUserId = sessionObj.user.id;
+        activeUserEmail = sessionObj.user.email;
+        activeUserName = sessionObj.user.user_metadata?.full_name || sessionObj.user.email.split('@')[0];
       }
-    ]));
+    } catch (e) {
+      console.error(e);
+    }
   }
-  if (!localStorage.getItem('db_organization_members')) {
-    localStorage.setItem('db_organization_members', JSON.stringify([
-      { id: 'member-id', organization_id: 'org-id', user_id: 'user-admin-id', role: 'admin' }
-    ]));
+
+  // Ensure mock session token is logged-in
+  if (!localStorage.getItem('mock_session_token')) {
+    localStorage.setItem('mock_session_token', 'logged-in');
   }
-  if (!localStorage.getItem('db_user_roles')) {
-    localStorage.setItem('db_user_roles', JSON.stringify([
-      { id: 'user-role-id', user_id: 'user-admin-id', role_id: 'role-owner-id', tenant_id: 'org-id' }
-    ]));
+
+  // Ensure active tenant is set
+  let activeTenant = localStorage.getItem('brand_flow_active_tenant');
+  if (!activeTenant || activeTenant === 'undefined') {
+    activeTenant = 'org-id';
+    localStorage.setItem('brand_flow_active_tenant', 'org-id');
   }
-  if (!localStorage.getItem('db_roles')) {
+
+  // 1. Profiles
+  const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
+  if (!profiles.some((p: any) => p.id === activeUserId)) {
+    profiles.push({ id: activeUserId, email: activeUserEmail, full_name: activeUserName });
+    localStorage.setItem('db_profiles', JSON.stringify(profiles));
+  }
+
+  // 2. Organizations
+  const orgs = JSON.parse(localStorage.getItem('db_organizations') || '[]');
+  if (!orgs.some((o: any) => o.id === activeTenant)) {
+    orgs.push({ 
+      id: activeTenant, 
+      name: 'Montaz Medias', 
+      slug: 'montaz-medias',
+      branding: { theme: 'dark', logoUrl: null },
+      timezone: 'Asia/Kolkata',
+      billing_settings: { plan: 'growth', status: 'active' },
+      ai_settings: { provider: 'gemini', model: 'gemini-1.5-flash' }
+    });
+    localStorage.setItem('db_organizations', JSON.stringify(orgs));
+  }
+
+  // 3. Organization Members
+  const members = JSON.parse(localStorage.getItem('db_organization_members') || '[]');
+  if (!members.some((m: any) => m.user_id === activeUserId && m.organization_id === activeTenant)) {
+    members.push({ id: 'member-' + activeUserId, organization_id: activeTenant, user_id: activeUserId, role: 'admin' });
+    localStorage.setItem('db_organization_members', JSON.stringify(members));
+  }
+
+  // 4. Roles
+  const roles = JSON.parse(localStorage.getItem('db_roles') || '[]');
+  if (roles.length === 0) {
     localStorage.setItem('db_roles', JSON.stringify([
       { id: 'role-owner-id', name: 'Agency Owner', description: 'Full ownership and admin dashboard access', is_system: true }
     ]));
   }
-  
-  // Seed CRM Core Tables for rich initial presentation
-  if (!localStorage.getItem('db_leads')) {
-    localStorage.setItem('db_leads', JSON.stringify([
-      { id: 'lead-1', tenant_id: 'org-id', first_name: 'Rahul', last_name: 'Sharma', email: 'rahul@fitnessbrand.com', phone: '9876543210', company_name: 'FitLife Brand', status: 'new', budget_range: '20k-50k', primary_goal: 'Visibility', instagram: 'fitlife_india', created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
-      { id: 'lead-2', tenant_id: 'org-id', first_name: 'Aisha', last_name: 'Khan', email: 'aisha@luxebeauty.in', phone: '8765432109', company_name: 'Luxe Beauty', status: 'qualified', budget_range: '50k-100k', primary_goal: 'Authority', instagram: 'luxebeauty_in', created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_clients')) {
-    localStorage.setItem('db_clients', JSON.stringify([
-      { id: 'client-1', tenant_id: 'org-id', brand_name: 'Luxe Beauty', company_name: 'Luxe Beauty Cosmetics', contact_name: 'Aisha Khan', contact_email: 'aisha@luxebeauty.in', status: 'active', health_status: 'good', niche: 'Beauty', contract_month: 1, created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_proposals')) {
-    localStorage.setItem('db_proposals', JSON.stringify([
-      { id: 'prop-1', tenant_id: 'org-id', lead_id: 'lead-2', title: 'Luxe Beauty Retainer Scope', status: 'accepted', plan_type: 'accelerator', monthly_fee: 49999, reels_per_month: 15, shoot_days: 2, contract_duration: 6, created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_contracts')) {
-    localStorage.setItem('db_contracts', JSON.stringify([
-      { id: 'contract-1', tenant_id: 'org-id', client_id: 'client-1', monthly_retainer: 49999, total_value: 299994, amount_received: 49999, status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 180*24*60*60*1000).toISOString(), created_at: new Date().toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_strategies')) {
-    localStorage.setItem('db_strategies', JSON.stringify([
-      { id: 'strat-1', tenant_id: 'org-id', client_id: 'client-1', month_number: 1, target_reels: 15, shoot_days: 2, pillars: ['Skincare routines', 'Makeup tutorials', 'UGC Reviews'], status: 'approved', positioning_summary: 'Luxury skincare and cosmetics positioned for premium tier buyers.', created_at: new Date().toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_reels')) {
-    localStorage.setItem('db_reels', JSON.stringify([
-      { id: 'reel-1', tenant_id: 'org-id', client_id: 'client-1', title: '5 Skincare Myths Busted', script_status: 'approved', edit_status: 'editing', priority: 'high', month_number: 1, reel_number: 1, editor_id: 'user-admin-id', created_at: new Date().toISOString() },
-      { id: 'reel-2', tenant_id: 'org-id', client_id: 'client-1', title: 'Summer Makeup Routine', script_status: 'approved', edit_status: 'ready_for_review', priority: 'normal', month_number: 1, reel_number: 2, editor_id: 'user-admin-id', created_at: new Date().toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_monthly_cycles')) {
-    localStorage.setItem('db_monthly_cycles', JSON.stringify([
-      { id: 'cycle-1', tenant_id: 'org-id', client_id: 'client-1', month_number: 1, reels_planned: 15, reels_shot: 8, reels_edited: 2, reels_posted: 0, client_satisfaction: 'happy', status: 'in_production', is_delayed: false, created_at: new Date().toISOString() }
-    ]));
-  }
-  if (!localStorage.getItem('db_billing_usage_metrics')) {
-    localStorage.setItem('db_billing_usage_metrics', JSON.stringify([
-      { id: 'billing-1', tenant_id: 'org-id', metric_name: 'seats', current_value: 1, max_limit: 5 },
-      { id: 'billing-2', tenant_id: 'org-id', metric_name: 'storage_bytes', current_value: 150000000, max_limit: 5368709120 },
-      { id: 'billing-3', tenant_id: 'org-id', metric_name: 'ai_requests', current_value: 4, max_limit: 100 }
-    ]));
-  }
-  if (!localStorage.getItem('db_automation_workflows')) {
-    localStorage.setItem('db_automation_workflows', JSON.stringify([
-      { id: 'auto-wf-1', tenant_id: 'org-id', name: 'Reel Approval Notifications', description: 'Alert editor when client signs off script', trigger_type: 'reel_approved', conditions: [{ field: 'script_status', operator: 'eq', value: 'approved' }], actions: [{ type: 'notify_owner', delay_hours: 0 }], is_active: true }
-    ]));
+
+  // 5. User Roles mapping
+  const userRoles = JSON.parse(localStorage.getItem('db_user_roles') || '[]');
+  if (!userRoles.some((ur: any) => ur.user_id === activeUserId && ur.tenant_id === activeTenant)) {
+    userRoles.push({ id: 'ur-' + activeUserId, user_id: activeUserId, role_id: 'role-owner-id', tenant_id: activeTenant });
+    localStorage.setItem('db_user_roles', JSON.stringify(userRoles));
   }
 
-  // Pre-seed local login state
-  if (!localStorage.getItem('mock_session_token')) {
-    localStorage.setItem('mock_session_token', 'logged-in');
-    localStorage.setItem('brand_flow_active_tenant', 'org-id');
+  // 6. Seed CRM Core tables for the active tenant
+  const clients = JSON.parse(localStorage.getItem('db_clients') || '[]');
+  const hasClientsForTenant = clients.some((c: any) => c.tenant_id === activeTenant);
+  if (!hasClientsForTenant) {
+    const tenantClients = [
+      { id: 'client-1-' + activeTenant, tenant_id: activeTenant, brand_name: 'Luxe Beauty', company_name: 'Luxe Beauty Cosmetics', contact_name: 'Aisha Khan', contact_email: 'aisha@luxebeauty.in', status: 'active', health_status: 'good', niche: 'Beauty', contract_month: 1, created_at: new Date().toISOString() }
+    ];
+    localStorage.setItem('db_clients', JSON.stringify([...clients, ...tenantClients]));
+    
+    const leads = JSON.parse(localStorage.getItem('db_leads') || '[]');
+    const tenantLeads = [
+      { id: 'lead-1-' + activeTenant, tenant_id: activeTenant, first_name: 'Rahul', last_name: 'Sharma', email: 'rahul@fitnessbrand.com', phone: '9876543210', company_name: 'FitLife Brand', status: 'new', budget_range: '20k-50k', primary_goal: 'Visibility', instagram: 'fitlife_india', created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
+      { id: 'lead-2-' + activeTenant, tenant_id: activeTenant, first_name: 'Aisha', last_name: 'Khan', email: 'aisha@luxebeauty.in', phone: '8765432109', company_name: 'Luxe Beauty', status: 'qualified', budget_range: '50k-100k', primary_goal: 'Authority', instagram: 'luxebeauty_in', created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString() }
+    ];
+    localStorage.setItem('db_leads', JSON.stringify([...leads, ...tenantLeads]));
+
+    const proposals = JSON.parse(localStorage.getItem('db_proposals') || '[]');
+    const tenantProposals = [
+      { id: 'prop-1-' + activeTenant, tenant_id: activeTenant, lead_id: 'lead-2-' + activeTenant, title: 'Luxe Beauty Retainer Scope', status: 'accepted', plan_type: 'accelerator', monthly_fee: 49999, reels_per_month: 15, shoot_days: 2, contract_duration: 6, created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString() }
+    ];
+    localStorage.setItem('db_proposals', JSON.stringify([...proposals, ...tenantProposals]));
+
+    const contracts = JSON.parse(localStorage.getItem('db_contracts') || '[]');
+    const tenantContracts = [
+      { id: 'contract-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, monthly_retainer: 49999, total_value: 299994, amount_received: 49999, status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 180*24*60*60*1000).toISOString(), created_at: new Date().toISOString() }
+    ];
+    localStorage.setItem('db_contracts', JSON.stringify([...contracts, ...tenantContracts]));
+
+    const strategies = JSON.parse(localStorage.getItem('db_strategies') || '[]');
+    const tenantStrategies = [
+      { id: 'strat-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, month_number: 1, target_reels: 15, shoot_days: 2, pillars: ['Skincare routines', 'Makeup tutorials', 'UGC Reviews'], status: 'approved', positioning_summary: 'Luxury skincare and cosmetics positioned for premium tier buyers.', created_at: new Date().toISOString() }
+    ];
+    localStorage.setItem('db_strategies', JSON.stringify([...strategies, ...tenantStrategies]));
+
+    const reels = JSON.parse(localStorage.getItem('db_reels') || '[]');
+    const tenantReels = [
+      { id: 'reel-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, title: '5 Skincare Myths Busted', script_status: 'approved', edit_status: 'editing', priority: 'high', month_number: 1, reel_number: 1, editor_id: activeUserId, created_at: new Date().toISOString() },
+      { id: 'reel-2-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, title: 'Summer Makeup Routine', script_status: 'approved', edit_status: 'ready_for_review', priority: 'normal', month_number: 1, reel_number: 2, editor_id: activeUserId, created_at: new Date().toISOString() }
+    ];
+    localStorage.setItem('db_reels', JSON.stringify([...reels, ...tenantReels]));
+
+    const cycles = JSON.parse(localStorage.getItem('db_monthly_cycles') || '[]');
+    const tenantCycles = [
+      { id: 'cycle-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, month_number: 1, reels_planned: 15, reels_shot: 8, reels_edited: 2, reels_posted: 0, client_satisfaction: 'happy', status: 'in_production', is_delayed: false, created_at: new Date().toISOString() }
+    ];
+    localStorage.setItem('db_monthly_cycles', JSON.stringify([...cycles, ...tenantCycles]));
+
+    const usage = JSON.parse(localStorage.getItem('db_billing_usage_metrics') || '[]');
+    const tenantUsage = [
+      { id: 'billing-1-' + activeTenant, tenant_id: activeTenant, metric_name: 'seats', current_value: 1, max_limit: 5 },
+      { id: 'billing-2-' + activeTenant, tenant_id: activeTenant, metric_name: 'storage_bytes', current_value: 150000000, max_limit: 5368709120 },
+      { id: 'billing-3-' + activeTenant, tenant_id: activeTenant, metric_name: 'ai_requests', current_value: 4, max_limit: 100 }
+    ];
+    localStorage.setItem('db_billing_usage_metrics', JSON.stringify([...usage, ...tenantUsage]));
+
+    const workflows = JSON.parse(localStorage.getItem('db_automation_workflows') || '[]');
+    const tenantWorkflows = [
+      { id: 'auto-wf-1-' + activeTenant, tenant_id: activeTenant, name: 'Reel Approval Notifications', description: 'Alert editor when client signs off script', trigger_type: 'reel_approved', conditions: [{ field: 'script_status', operator: 'eq', value: 'approved' }], actions: [{ type: 'notify_owner', delay_hours: 0 }], is_active: true }
+    ];
+    localStorage.setItem('db_automation_workflows', JSON.stringify([...workflows, ...tenantWorkflows]));
   }
 }
 
@@ -371,8 +417,24 @@ export const supabase = {
       const sessionToken = localStorage.getItem('mock_session_token');
       if (!sessionToken) return { data: { session: null }, error: null };
 
-      const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
-      const adminUser = profiles.find((p: any) => p.email === 'admin@montazmedias.com') || profiles[0] || { id: 'user-admin-id', email: 'admin@montazmedias.com', full_name: 'Super Admin' };
+      // Parse user details from real session or defaults
+      let activeUserId = 'user-admin-id';
+      let activeUserEmail = 'admin@montazmedias.com';
+      let activeUserName = 'Super Admin';
+
+      const rawSession = localStorage.getItem('sb-ywwvdfudibmxlcsvcqih-auth-token');
+      if (rawSession) {
+        try {
+          const sessionObj = JSON.parse(rawSession);
+          if (sessionObj && sessionObj.user) {
+            activeUserId = sessionObj.user.id;
+            activeUserEmail = sessionObj.user.email;
+            activeUserName = sessionObj.user.user_metadata?.full_name || sessionObj.user.email.split('@')[0];
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
 
       const mockSession = {
         access_token: 'mock-access-token',
@@ -380,9 +442,9 @@ export const supabase = {
         refresh_token: 'mock-refresh-token',
         token_type: 'bearer',
         user: {
-          id: adminUser.id,
-          email: adminUser.email,
-          user_metadata: { full_name: adminUser.full_name }
+          id: activeUserId,
+          email: activeUserEmail,
+          user_metadata: { full_name: activeUserName }
         }
       };
       return { data: { session: mockSession }, error: null };
