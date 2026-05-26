@@ -324,6 +324,25 @@ function initializeMockDb() {
     localStorage.setItem('brand_flow_active_tenant', 'org-id');
   }
 
+  // Self-healing database migration for contracts schema
+  try {
+    const contracts = JSON.parse(localStorage.getItem('db_contracts') || '[]');
+    let updatedContracts = false;
+    const repairedContracts = contracts.map((c: any) => {
+      if (c.status && !c.contract_status) {
+        c.contract_status = c.status;
+        delete c.status;
+        updatedContracts = true;
+      }
+      return c;
+    });
+    if (updatedContracts) {
+      localStorage.setItem('db_contracts', JSON.stringify(repairedContracts));
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
   // 1. Profiles
   const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
   if (!profiles.some((p: any) => p.id === activeUserId)) {
