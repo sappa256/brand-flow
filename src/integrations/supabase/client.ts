@@ -32,6 +32,10 @@ function expandRelationships(table: string, row: any) {
     const workflows = JSON.parse(localStorage.getItem('db_automation_workflows') || '[]');
     newRow.workflow = workflows.find((w: any) => w.id === newRow.workflow_id) || null;
   }
+  if (newRow.organization_id) {
+    const orgs = JSON.parse(localStorage.getItem('db_organizations') || '[]');
+    newRow.organization = orgs.find((o: any) => o.id === newRow.organization_id) || null;
+  }
   
   return newRow;
 }
@@ -44,6 +48,11 @@ class MockQueryBuilder {
   private sortAsc: boolean = true;
   private limitCount: number | null = null;
   private selectCountOnly: boolean = false;
+
+  private action: 'select' | 'insert' | 'update' | 'upsert' | 'delete' = 'select';
+  private actionValues: any = null;
+  private isSingle: boolean = false;
+  private isMaybeSingle: boolean = false;
 
   constructor(tableName: string) {
     this.tableName = tableName;
@@ -99,148 +108,162 @@ class MockQueryBuilder {
     return this;
   }
 
+  insert(values: any) {
+    this.action = 'insert';
+    this.actionValues = values;
+    return this;
+  }
+
+  update(values: any) {
+    this.action = 'update';
+    this.actionValues = values;
+    return this;
+  }
+
+  upsert(values: any) {
+    this.action = 'upsert';
+    this.actionValues = values;
+    return this;
+  }
+
+  delete() {
+    this.action = 'delete';
+    return this;
+  }
+
   maybeSingle() {
-    return this.then((res) => {
-      const data = res.data;
-      return { data: (data && data.length > 0) ? data[0] : null, error: res.error };
-    });
+    this.isMaybeSingle = true;
+    return this;
   }
 
   single() {
-    return this.then((res) => {
-      const data = res.data;
-      if (!data || data.length === 0) {
-        return { data: null, error: new Error('No rows found') as any };
-      }
-      return { data: data[0], error: res.error };
-    });
+    this.isSingle = true;
+    return this;
   }
 
   async then(resolve: (value: any) => any) {
     try {
       const dbKey = `db_${this.tableName}`;
       let rows = JSON.parse(localStorage.getItem(dbKey) || '[]');
+      const activeTenant = localStorage.getItem('brand_flow_active_tenant') || 'org-id';
       
-      // Apply filters
-      for (const filter of this.filters) {
-        rows = rows.filter(filter);
-      }
+      let resultData: any = null;
 
-      // Apply sorting
-      if (this.sortColumn) {
-        const col = this.sortColumn;
-        const asc = this.sortAsc;
-        rows.sort((a: any, b: any) => {
-          const valA = a[col];
-          const valB = b[col];
-          if (valA < valB) return asc ? -1 : 1;
-          if (valA > valB) return asc ? 1 : -1;
-          return 0;
+      if (this.action === 'insert') {
+        const toInsert = Array.isArray(this.actionValues) ? this.actionValues : [this.actionValues];
+        const insertedRows: any[] = [];
+        for (const val of toInsert) {
+          const newRow = {
+            id: val.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)),
+            created_at: new Date().toISOString(),
+            tenant_id: activeTenant,
+            ...val
+          };
+          rows.push(newRow);
+          insertedRows.push(newRow);
+        }
+        localStorage.setItem(dbKey, JSON.stringify(rows));
+        resultData = Array.isArray(this.actionValues) ? insertedRows : insertedRows[0];
+      } 
+      else if (this.action === 'update') {
+        const updatedRows: any[] = [];
+        rows = rows.map((row: any) => {
+          const matches = this.filters.every(filter => filter(row));
+          if (matches) {
+            const newRow = { ...row, ...this.actionValues, updated_at: new Date().toISOString() };
+            updatedRows.push(newRow);
+            return newRow;
+          }
+          return row;
         });
+        localStorage.setItem(dbKey, JSON.stringify(rows));
+        resultData = updatedRows;
+      } 
+      else if (this.action === 'upsert') {
+        const toUpsert = Array.isArray(this.actionValues) ? this.actionValues : [this.actionValues];
+        const resultRows: any[] = [];
+        for (const val of toUpsert) {
+          const existingIdx = val.id ? rows.findIndex((r: any) => r.id === val.id) : -1;
+          if (existingIdx > -1) {
+            const updatedRow = { ...rows[existingIdx], ...val, updated_at: new Date().toISOString() };
+            rows[existingIdx] = updatedRow;
+            resultRows.push(updatedRow);
+          } else {
+            const newRow = {
+              id: val.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)),
+              created_at: new Date().toISOString(),
+              tenant_id: activeTenant,
+              ...val
+            };
+            rows.push(newRow);
+            resultRows.push(newRow);
+          }
+        }
+        localStorage.setItem(dbKey, JSON.stringify(rows));
+        resultData = Array.isArray(this.actionValues) ? resultRows : resultRows[0];
+      } 
+      else if (this.action === 'delete') {
+        const remainingRows = rows.filter((row: any) => {
+          return !this.filters.every(filter => filter(row));
+        });
+        localStorage.setItem(dbKey, JSON.stringify(remainingRows));
+        resultData = null;
+      } 
+      else {
+        // Apply filters
+        let filteredRows = [...rows];
+        for (const filter of this.filters) {
+          filteredRows = filteredRows.filter(filter);
+        }
+
+        // Apply sorting
+        if (this.sortColumn) {
+          const col = this.sortColumn;
+          const asc = this.sortAsc;
+          filteredRows.sort((a: any, b: any) => {
+            const valA = a[col];
+            const valB = b[col];
+            if (valA < valB) return asc ? -1 : 1;
+            if (valA > valB) return asc ? 1 : -1;
+            return 0;
+          });
+        }
+
+        // Apply limit
+        if (this.limitCount !== null) {
+          filteredRows = filteredRows.slice(0, this.limitCount);
+        }
+
+        // Expand relations
+        const expandedRows = filteredRows.map((row: any) => expandRelationships(this.tableName, row));
+
+        if (this.selectCountOnly) {
+          return resolve({ data: null, count: expandedRows.length, error: null });
+        }
+
+        resultData = expandedRows;
       }
 
-      // Apply limit
-      if (this.limitCount !== null) {
-        rows = rows.slice(0, this.limitCount);
+      // Handle single / maybeSingle resolution formats
+      if (this.isSingle) {
+        const isArr = Array.isArray(resultData);
+        const first = isArr ? resultData[0] : resultData;
+        if (!first) {
+          return resolve({ data: null, error: new Error('No rows found') as any });
+        }
+        return resolve({ data: first, error: null });
       }
 
-      // Expand relations
-      const expandedRows = rows.map((row: any) => expandRelationships(this.tableName, row));
-
-      if (this.selectCountOnly) {
-        return resolve({ data: null, count: expandedRows.length, error: null });
+      if (this.isMaybeSingle) {
+        const isArr = Array.isArray(resultData);
+        const first = isArr ? resultData[0] : resultData;
+        return resolve({ data: first || null, error: null });
       }
 
-      return resolve({ data: expandedRows, count: expandedRows.length, error: null });
+      return resolve({ data: resultData, count: Array.isArray(resultData) ? resultData.length : 1, error: null });
     } catch (err) {
       return resolve({ data: null, count: 0, error: err });
     }
-  }
-
-  async insert(values: any) {
-    const dbKey = `db_${this.tableName}`;
-    let rows = JSON.parse(localStorage.getItem(dbKey) || '[]');
-    const activeTenant = localStorage.getItem('brand_flow_active_tenant') || 'org-id';
-
-    const toInsert = Array.isArray(values) ? values : [values];
-    const insertedRows: any[] = [];
-
-    for (const val of toInsert) {
-      const newRow = {
-        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-        created_at: new Date().toISOString(),
-        tenant_id: activeTenant,
-        ...val
-      };
-      rows.push(newRow);
-      insertedRows.push(newRow);
-    }
-
-    localStorage.setItem(dbKey, JSON.stringify(rows));
-    return { data: Array.isArray(values) ? insertedRows : insertedRows[0], error: null };
-  }
-
-  async update(values: any) {
-    const dbKey = `db_${this.tableName}`;
-    let rows = JSON.parse(localStorage.getItem(dbKey) || '[]');
-    
-    let updatedCount = 0;
-    const updatedRows: any[] = [];
-    rows = rows.map((row: any) => {
-      const matches = this.filters.every(filter => filter(row));
-      if (matches) {
-        updatedCount++;
-        const newRow = { ...row, ...values, updated_at: new Date().toISOString() };
-        updatedRows.push(newRow);
-        return newRow;
-      }
-      return row;
-    });
-
-    localStorage.setItem(dbKey, JSON.stringify(rows));
-    return { data: updatedRows, error: null };
-  }
-
-  async upsert(values: any) {
-    const dbKey = `db_${this.tableName}`;
-    let rows = JSON.parse(localStorage.getItem(dbKey) || '[]');
-    const activeTenant = localStorage.getItem('brand_flow_active_tenant') || 'org-id';
-
-    const toUpsert = Array.isArray(values) ? values : [values];
-    const resultRows: any[] = [];
-
-    for (const val of toUpsert) {
-      const existingIdx = val.id ? rows.findIndex((r: any) => r.id === val.id) : -1;
-      if (existingIdx > -1) {
-        const updatedRow = { ...rows[existingIdx], ...val, updated_at: new Date().toISOString() };
-        rows[existingIdx] = updatedRow;
-        resultRows.push(updatedRow);
-      } else {
-        const newRow = {
-          id: val.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)),
-          created_at: new Date().toISOString(),
-          tenant_id: activeTenant,
-          ...val
-        };
-        rows.push(newRow);
-        resultRows.push(newRow);
-      }
-    }
-
-    localStorage.setItem(dbKey, JSON.stringify(rows));
-    return { data: Array.isArray(values) ? resultRows : resultRows[0], error: null };
-  }
-
-  async delete() {
-    const dbKey = `db_${this.tableName}`;
-    const rows = JSON.parse(localStorage.getItem(dbKey) || '[]');
-    
-    const remainingRows = rows.filter((row: any) => {
-      return !this.filters.every(filter => filter(row));
-    });
-
-    localStorage.setItem(dbKey, JSON.stringify(remainingRows));
-    return { data: null, error: null };
   }
 }
 
