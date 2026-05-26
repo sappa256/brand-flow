@@ -392,7 +392,7 @@ function initializeMockDb() {
 
     const contracts = JSON.parse(localStorage.getItem('db_contracts') || '[]');
     const tenantContracts = [
-      { id: 'contract-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, monthly_retainer: 49999, total_value: 299994, amount_received: 49999, status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 180*24*60*60*1000).toISOString(), created_at: new Date().toISOString() }
+      { id: 'contract-1-' + activeTenant, tenant_id: activeTenant, client_id: 'client-1-' + activeTenant, monthly_retainer: 49999, total_value: 299994, amount_received: 49999, contract_status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 180*24*60*60*1000).toISOString(), created_at: new Date().toISOString() }
     ];
     localStorage.setItem('db_contracts', JSON.stringify([...contracts, ...tenantContracts]));
 

@@ -131,6 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!rolesErr && userRolesData && userRolesData.length > 0) {
           const mappedRoles = userRolesData.map((ur: any) => ur.role?.name as string).filter(Boolean);
+          if (mappedRoles.includes('Agency Owner') && !mappedRoles.includes('admin')) {
+            mappedRoles.push('admin');
+          }
           setRoles(mappedRoles);
 
           const permsSet = new Set<string>();
