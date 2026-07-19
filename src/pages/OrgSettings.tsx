@@ -1025,7 +1025,7 @@ export default function OrgSettings() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Default Provider</Label>
-                    <Select value={aiProvider} onValueChange={setAiProvider}>
+                    <Select value={aiProvider} onValueChange={(v) => setAiProvider(v as any)}>
                       <SelectTrigger className="bg-background/50 border-white/10">
                         <SelectValue />
                       </SelectTrigger>

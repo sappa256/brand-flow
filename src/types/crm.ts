@@ -40,7 +40,7 @@ export interface Profile {
   updated_at: string;
 }
 
-export interface UserRole {
+export interface UserRoleLegacy {
   id: string;
   user_id: string;
   role: AppRole;

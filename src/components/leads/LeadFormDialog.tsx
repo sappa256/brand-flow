@@ -108,7 +108,7 @@ export function LeadFormDialog({
         primary_goals: lead.primary_goals || [],
         budget_range: lead.budget_range,
         lead_source: lead.lead_source,
-        status: lead.status,
+        status: lead.status as any,
         notes: lead.notes || '',
       });
     } else {
