@@ -219,7 +219,7 @@ export function AppSidebar() {
                       onMouseEnter={() => setHoveredItem(item.href)}
                       onMouseLeave={() => setHoveredItem(null)}
                     >
-                      <Link to={item.href} className="relative z-10 flex items-center gap-3">
+                      <Link to={item.href} onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                         <item.icon 
                           className={cn(
                             "h-4 w-4 transition-all duration-300",
@@ -300,7 +300,7 @@ export function AppSidebar() {
                               onMouseEnter={() => setHoveredItem(item.href)}
                               onMouseLeave={() => setHoveredItem(null)}
                             >
-                              <Link to={item.href} className="flex items-center gap-3">
+                              <Link to={item.href} onClick={handleNavClick} className="flex items-center gap-3">
                                 <item.icon 
                                   className={cn(
                                     "h-4 w-4 transition-all duration-300",
@@ -344,7 +344,7 @@ export function AppSidebar() {
                     onMouseEnter={() => setHoveredItem('/org-settings')}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <Link to="/org-settings" className="relative z-10 flex items-center gap-3">
+                    <Link to="/org-settings" onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                       <Building2 
                         className={cn(
                           "h-4 w-4 transition-all duration-500",
@@ -372,7 +372,7 @@ export function AppSidebar() {
                     onMouseEnter={() => setHoveredItem('/settings')}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <Link to="/settings" className="relative z-10 flex items-center gap-3">
+                    <Link to="/settings" onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                       <Settings 
                         className={cn(
                           "h-4 w-4 transition-all duration-500",
