@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KanbanBoard } from '@/components/shared/KanbanBoard';
 import { Button } from '@/components/ui/button';
@@ -6,11 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ProposalFormDialog } from '@/components/proposals/ProposalFormDialog';
-import { Plus, FileText, Calendar, IndianRupee } from 'lucide-react';
-import type { Proposal, ProposalStatus } from '@/types/crm';
+import { Plus, FileText, Calendar, IndianRupee, FileDown } from 'lucide-react';
+import type { Proposal, ProposalStatus, Lead } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { generateProposalPdf } from '@/lib/proposalPdfGenerator';
 
 const PROPOSAL_COLUMNS = [
   { id: 'draft', title: 'Draft', count: 0 },
@@ -24,10 +26,20 @@ export default function Proposals() {
   const [isLoading, setIsLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [preselectedLead, setPreselectedLead] = useState<Lead | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     fetchProposals();
-  }, []);
+    
+    if (location.state?.preselectedLead) {
+      setPreselectedLead(location.state.preselectedLead);
+      setSelectedProposal(null);
+      setFormOpen(true);
+      // Clear location state to prevent dialog re-opening on reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const fetchProposals = async () => {
     const { data, error } = await supabase
@@ -48,6 +60,7 @@ export default function Proposals() {
 
   const handleAddNew = () => {
     setSelectedProposal(null);
+    setPreselectedLead(null);
     setFormOpen(true);
   };
 
@@ -122,12 +135,22 @@ export default function Proposals() {
     toast.success('Proposal deleted successfully');
   };
 
+  const handleDownloadPdf = (proposal: Proposal) => {
+    try {
+      generateProposalPdf(proposal);
+      toast.success('Proposal PDF downloaded successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   const renderProposalCard = (proposal: Proposal) => {
     const totalValue = proposal.monthly_fee * proposal.contract_duration_months;
     
     return (
       <Card 
-        className="cursor-pointer hover:shadow-md transition-shadow"
+        className="cursor-pointer hover:shadow-md transition-shadow relative"
         onClick={() => handleCardClick(proposal)}
       >
         <CardContent className="p-4 space-y-3">
@@ -138,7 +161,21 @@ export default function Proposals() {
                 {proposal.plan_type} Plan
               </p>
             </div>
-            <StatusBadge status={proposal.status} />
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 hover:bg-white/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadPdf(proposal);
+                }}
+                title="Download Proposal PDF"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+              </Button>
+              <StatusBadge status={proposal.status} />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -211,6 +248,7 @@ export default function Proposals() {
         open={formOpen}
         onOpenChange={setFormOpen}
         proposal={selectedProposal}
+        preselectedLead={preselectedLead}
         onSuccess={fetchProposals}
       />
     </AppLayout>

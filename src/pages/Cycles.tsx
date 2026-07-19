@@ -199,19 +199,16 @@ export default function Cycles() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout
+      title="Monthly Cycles"
+      actions={
+        <Button onClick={() => setIsDialogOpen(true)} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          New Cycle
+        </Button>
+      }
+    >
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">Monthly Cycles</h1>
-            <p className="text-sm text-muted-foreground">Track monthly production progress</p>
-          </div>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm" className="w-fit">
-            <Plus className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">New Cycle</span>
-            <span className="md:hidden">New</span>
-          </Button>
-        </div>
 
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Select value={clientFilter} onValueChange={setClientFilter}>

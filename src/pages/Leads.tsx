@@ -6,13 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
-import { Plus, Instagram, Youtube, Linkedin, Mail, Phone, FileText } from 'lucide-react';
+import { Plus, Instagram, Youtube, Linkedin, Mail, Phone, FileText, Check } from 'lucide-react';
 import type { Lead, LeadStatus } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const LEAD_COLUMNS = [
+  { id: 'onboarding_request', title: 'Onboarding Requests', count: 0 },
   { id: 'new', title: 'New', count: 0 },
   { id: 'contacted', title: 'Contacted', count: 0 },
   { id: 'qualified', title: 'Qualified', count: 0 },
@@ -56,6 +57,23 @@ export default function Leads() {
   const handleCreateProposal = (lead: Lead, e: React.MouseEvent) => {
     e.stopPropagation();
     navigate('/proposals', { state: { preselectedLead: lead } });
+  };
+
+  const handleApproveOnboarding = async (lead: Lead, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase
+      .from('leads')
+      .update({ status: 'qualified' })
+      .eq('id', lead.id);
+
+    if (error) {
+      toast.error('Failed to approve onboarding lead');
+      return;
+    }
+
+    toast.success('Onboarding lead approved & qualified!');
+    await fetchLeads();
+    navigate('/proposals', { state: { preselectedLead: { ...lead, status: 'qualified' } } });
   };
 
   const handleLeadMove = async (leadId: string, newStatus: string) => {
@@ -118,6 +136,22 @@ export default function Leads() {
           <p className="text-[10px] sm:text-xs text-muted-foreground">
             Budget: ₹{lead.budget_range.replace('_plus', '+')}
           </p>
+        )}
+
+        {lead.status === 'onboarding_request' && (
+          <div className="space-y-1.5 pt-2 border-t border-zinc-800/10 dark:border-zinc-200/10 mt-2 text-[10px] sm:text-xs text-muted-foreground">
+            {lead.tiktok && <p className="truncate">TikTok: @{lead.tiktok}</p>}
+            {lead.content_tone && <p className="truncate">Tone: {lead.content_tone}</p>}
+            {lead.niche && <p className="truncate">Niche: {lead.niche}</p>}
+            <Button 
+              size="sm" 
+              className="w-full mt-2 h-7 sm:h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold"
+              onClick={(e) => handleApproveOnboarding(lead, e)}
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Approve Onboarding
+            </Button>
+          </div>
         )}
 
         {(lead.status === 'qualified' || lead.status === 'proposal_required') && (

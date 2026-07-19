@@ -3,9 +3,14 @@
 
 let authCallback: any = null;
 
-// Helper to expand relationships (simulate SQL joins)
 function expandRelationships(table: string, row: any) {
   const newRow = { ...row };
+  
+  if (table === 'leads') {
+    if (newRow.first_name && newRow.last_name && !newRow.full_name) {
+      newRow.full_name = `${newRow.first_name} ${newRow.last_name}`;
+    }
+  }
   
   if (newRow.client_id) {
     const clients = JSON.parse(localStorage.getItem('db_clients') || '[]');
@@ -26,7 +31,25 @@ function expandRelationships(table: string, row: any) {
   }
   if (newRow.role_id) {
     const roles = JSON.parse(localStorage.getItem('db_roles') || '[]');
-    newRow.role = roles.find((r: any) => r.id === newRow.role_id) || null;
+    const role = roles.find((r: any) => r.id === newRow.role_id) || null;
+    if (role) {
+      const rolePerms = JSON.parse(localStorage.getItem('db_role_permissions') || '[]');
+      const permissions = JSON.parse(localStorage.getItem('db_permissions') || '[]');
+      const mappedRolePerms = rolePerms
+        .filter((rp: any) => rp.role_id === role.id)
+        .map((rp: any) => {
+          const perm = permissions.find((p: any) => p.id === rp.permission_id);
+          return {
+            permission: perm ? { name: perm.name } : null
+          };
+        });
+      newRow.role = {
+        ...role,
+        role_permissions: mappedRolePerms
+      };
+    } else {
+      newRow.role = null;
+    }
   }
   if (newRow.workflow_id) {
     const workflows = JSON.parse(localStorage.getItem('db_automation_workflows') || '[]');
@@ -196,6 +219,83 @@ class MockQueryBuilder {
           if (matches) {
             const newRow = { ...row, ...this.actionValues, updated_at: new Date().toISOString() };
             updatedRows.push(newRow);
+            
+            // EMULATE DATABASE TRIGGERS
+            if (this.tableName === 'proposals' && newRow.status === 'accepted' && row.status !== 'accepted') {
+              // 1. Create client
+              const clientsKey = 'db_clients';
+              const allClients = JSON.parse(localStorage.getItem(clientsKey) || '[]');
+              const existingClient = allClients.find((c: any) => c.proposal_id === newRow.id || c.lead_id === newRow.lead_id);
+              if (!existingClient) {
+                const newClientId = 'client-' + Math.random().toString(36).substring(2, 9);
+                const startDate = newRow.accepted_date || new Date().toISOString().split('T')[0];
+                const duration = newRow.contract_duration_months || 6;
+                const endDate = new Date(startDate);
+                endDate.setMonth(endDate.getMonth() + duration);
+                
+                const leads = JSON.parse(localStorage.getItem('db_leads') || '[]');
+                const associatedLead = leads.find((l: any) => l.id === newRow.lead_id);
+                
+                const newClient = {
+                  id: newClientId,
+                  tenant_id: activeTenant,
+                  client_name: newRow.client_name,
+                  brand_name: newRow.client_name,
+                  lead_id: newRow.lead_id,
+                  proposal_id: newRow.id,
+                  niche: associatedLead?.niche || 'N/A',
+                  plan_type: newRow.plan_type,
+                  platforms_managed: newRow.platforms || ['instagram'],
+                  start_date: startDate,
+                  end_date: endDate.toISOString().split('T')[0],
+                  current_contract_month: 1,
+                  status: 'active',
+                  health_status: 'good',
+                  contact_email: associatedLead?.email || null,
+                  contact_name: associatedLead ? `${associatedLead.first_name} ${associatedLead.last_name}` : null,
+                  created_at: new Date().toISOString()
+                };
+                allClients.push(newClient);
+                localStorage.setItem(clientsKey, JSON.stringify(allClients));
+                
+                // 2. Create contract
+                const contractsKey = 'db_contracts';
+                const allContracts = JSON.parse(localStorage.getItem(contractsKey) || '[]');
+                const newContract = {
+                  id: 'contract-' + Math.random().toString(36).substring(2, 9),
+                  tenant_id: activeTenant,
+                  client_id: newClientId,
+                  start_date: startDate,
+                  end_date: endDate.toISOString().split('T')[0],
+                  duration_months: duration,
+                  monthly_retainer: newRow.monthly_fee || 45000,
+                  payment_status: 'pending',
+                  contract_status: 'active',
+                  amount_received: 0,
+                  created_at: new Date().toISOString()
+                };
+                allContracts.push(newContract);
+                localStorage.setItem(contractsKey, JSON.stringify(allContracts));
+                
+                // 3. Create strategy
+                const strategiesKey = 'db_strategies';
+                const allStrategies = JSON.parse(localStorage.getItem(strategiesKey) || '[]');
+                const newStrategy = {
+                  id: 'strat-' + Math.random().toString(36).substring(2, 9),
+                  tenant_id: activeTenant,
+                  client_id: newClientId,
+                  month_number: 1,
+                  monthly_reel_target: newRow.reels_per_month || 8,
+                  shoot_days_required: newRow.shoot_days_per_month || 2,
+                  platform_priority: newRow.platforms && newRow.platforms[0] ? newRow.platforms[0] : 'Instagram',
+                  status: 'pending',
+                  created_at: new Date().toISOString()
+                };
+                allStrategies.push(newStrategy);
+                localStorage.setItem(strategiesKey, JSON.stringify(allStrategies));
+              }
+            }
+            
             return newRow;
           }
           return row;
@@ -343,6 +443,73 @@ function initializeMockDb() {
     console.error(e);
   }
 
+  // Self-healing database migration for proposals schema
+  try {
+    const proposals = JSON.parse(localStorage.getItem('db_proposals') || '[]');
+    let updatedProposals = false;
+    const repairedProposals = proposals.map((p: any) => {
+      let changed = false;
+      if (!p.client_name) {
+        p.client_name = p.title || 'Client';
+        changed = true;
+      }
+      if (p.shoot_days !== undefined && p.shoot_days_per_month === undefined) {
+        p.shoot_days_per_month = p.shoot_days;
+        changed = true;
+      }
+      if (p.contract_duration !== undefined && p.contract_duration_months === undefined) {
+        p.contract_duration_months = p.contract_duration;
+        changed = true;
+      }
+      if (changed) {
+        updatedProposals = true;
+      }
+      return p;
+    });
+    if (updatedProposals) {
+      localStorage.setItem('db_proposals', JSON.stringify(repairedProposals));
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Self-healing database migration for roles and permissions
+  try {
+    const currentRoles = JSON.parse(localStorage.getItem('db_roles') || '[]');
+    if (currentRoles.length <= 1) {
+      localStorage.removeItem('db_roles');
+      localStorage.removeItem('db_role_permissions');
+      localStorage.removeItem('db_permissions');
+    } else if (!currentRoles.some((r: any) => r.id === 'role-client-id')) {
+      currentRoles.push({ id: 'role-client-id', name: 'Client', description: 'Brand Client Portal', is_system: true });
+      localStorage.setItem('db_roles', JSON.stringify(currentRoles));
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Self-healing database migration for clients schema
+  try {
+    const clients = JSON.parse(localStorage.getItem('db_clients') || '[]');
+    let updatedClients = false;
+    const repairedClients = clients.map((c: any) => {
+      if (!c.client_name || !c.start_date || !c.current_contract_month || !c.plan_type || !c.platforms_managed) {
+        c.client_name = c.client_name || c.brand_name || 'Luxe Beauty';
+        c.start_date = c.start_date || new Date().toISOString();
+        c.current_contract_month = c.current_contract_month || c.contract_month || 1;
+        c.plan_type = c.plan_type || 'accelerator';
+        c.platforms_managed = c.platforms_managed || ['instagram'];
+        updatedClients = true;
+      }
+      return c;
+    });
+    if (updatedClients) {
+      localStorage.setItem('db_clients', JSON.stringify(repairedClients));
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
   // 1. Profiles
   const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
   if (!profiles.some((p: any) => p.id === activeUserId)) {
@@ -372,12 +539,82 @@ function initializeMockDb() {
     localStorage.setItem('db_organization_members', JSON.stringify(members));
   }
 
-  // 4. Roles
+  // 4. Permissions
+  const permissions = JSON.parse(localStorage.getItem('db_permissions') || '[]');
+  const sysPermissions = [
+    'view_contracts', 'edit_contracts', 'manage_clients', 'assign_editors', 'approve_reels', 
+    'manage_ai', 'manage_billing', 'upload_assets', 'view_audit_logs', 'view_leads', 'edit_leads', 
+    'view_proposals', 'edit_proposals', 'view_strategies', 'edit_strategies', 'view_shoots', 'edit_shoots', 
+    'view_reels', 'edit_reels', 'view_calendar', 'edit_calendar', 'view_cycles', 'edit_cycles'
+  ];
+  if (permissions.length === 0) {
+    const seededPerms = sysPermissions.map((name, i) => ({ id: `perm-${i}`, name }));
+    localStorage.setItem('db_permissions', JSON.stringify(seededPerms));
+  }
+
+  // 4b. Roles
   const roles = JSON.parse(localStorage.getItem('db_roles') || '[]');
+  const defaultRoles = [
+    { id: 'role-super-admin-id', name: 'Super Admin', description: 'Global Super Admin', is_system: true },
+    { id: 'role-owner-id', name: 'Agency Owner', description: 'Full ownership and admin dashboard access', is_system: true },
+    { id: 'role-admin-id', name: 'admin', description: 'Administrator', is_system: true },
+    { id: 'role-strategy-id', name: 'strategy', description: 'Content Strategist', is_system: true },
+    { id: 'role-sales-id', name: 'sales', description: 'Sales Manager', is_system: true },
+    { id: 'role-editor-id', name: 'editor', description: 'Video Editor', is_system: true },
+    { id: 'role-social-id', name: 'social_media', description: 'Social Media Manager', is_system: true },
+    { id: 'role-client-id', name: 'Client', description: 'Brand Client Portal', is_system: true }
+  ];
   if (roles.length === 0) {
-    localStorage.setItem('db_roles', JSON.stringify([
-      { id: 'role-owner-id', name: 'Agency Owner', description: 'Full ownership and admin dashboard access', is_system: true }
-    ]));
+    localStorage.setItem('db_roles', JSON.stringify(defaultRoles));
+  }
+
+  // 4c. Role Permissions Mapping
+  const rolePerms = JSON.parse(localStorage.getItem('db_role_permissions') || '[]');
+  if (rolePerms.length === 0) {
+    const activePerms = JSON.parse(localStorage.getItem('db_permissions') || '[]');
+    const newMappings: any[] = [];
+    
+    // Grant all permissions to Super Admin, Agency Owner, and admin
+    ['role-super-admin-id', 'role-owner-id', 'role-admin-id'].forEach(roleId => {
+      activePerms.forEach((p: any) => {
+        newMappings.push({ id: `rp-${roleId}-${p.id}`, role_id: roleId, permission_id: p.id });
+      });
+    });
+
+    // Strategy role mappings
+    const strategyPermNames = [
+      'view_strategies', 'edit_strategies', 'view_shoots', 'edit_shoots', 'view_reels', 'edit_reels', 
+      'view_calendar', 'edit_calendar', 'view_cycles', 'edit_cycles', 'view_leads', 'view_proposals', 
+      'manage_clients', 'upload_assets'
+    ];
+    activePerms.forEach((p: any) => {
+      if (strategyPermNames.includes(p.name)) {
+        newMappings.push({ id: `rp-strategy-${p.id}`, role_id: 'role-strategy-id', permission_id: p.id });
+      }
+    });
+
+    // Sales role mappings
+    const salesPermNames = [
+      'view_leads', 'edit_leads', 'view_proposals', 'edit_proposals', 'view_contracts', 'edit_contracts', 
+      'manage_clients', 'upload_assets'
+    ];
+    activePerms.forEach((p: any) => {
+      if (salesPermNames.includes(p.name)) {
+        newMappings.push({ id: `rp-sales-${p.id}`, role_id: 'role-sales-id', permission_id: p.id });
+      }
+    });
+
+    // Editor role mappings
+    const editorPermNames = [
+      'view_reels', 'edit_reels', 'upload_assets'
+    ];
+    activePerms.forEach((p: any) => {
+      if (editorPermNames.includes(p.name)) {
+        newMappings.push({ id: `rp-editor-${p.id}`, role_id: 'role-editor-id', permission_id: p.id });
+      }
+    });
+
+    localStorage.setItem('db_role_permissions', JSON.stringify(newMappings));
   }
 
   // 5. User Roles mapping
@@ -392,20 +629,51 @@ function initializeMockDb() {
   const hasClientsForTenant = clients.some((c: any) => c.tenant_id === activeTenant);
   if (!hasClientsForTenant) {
     const tenantClients = [
-      { id: 'client-1-' + activeTenant, tenant_id: activeTenant, brand_name: 'Luxe Beauty', company_name: 'Luxe Beauty Cosmetics', contact_name: 'Aisha Khan', contact_email: 'aisha@luxebeauty.in', status: 'active', health_status: 'good', niche: 'Beauty', contract_month: 1, created_at: new Date().toISOString() }
+      { id: 'client-1-' + activeTenant, tenant_id: activeTenant, client_name: 'Luxe Beauty', brand_name: 'Luxe Beauty', company_name: 'Luxe Beauty Cosmetics', contact_name: 'Aisha Khan', contact_email: 'aisha@luxebeauty.in', status: 'active', health_status: 'good', niche: 'Beauty', current_contract_month: 1, start_date: new Date().toISOString(), plan_type: 'accelerator', platforms_managed: ['instagram'], created_at: new Date().toISOString() }
     ];
     localStorage.setItem('db_clients', JSON.stringify([...clients, ...tenantClients]));
     
     const leads = JSON.parse(localStorage.getItem('db_leads') || '[]');
     const tenantLeads = [
       { id: 'lead-1-' + activeTenant, tenant_id: activeTenant, first_name: 'Rahul', last_name: 'Sharma', email: 'rahul@fitnessbrand.com', phone: '9876543210', company_name: 'FitLife Brand', status: 'new', budget_range: '20k-50k', primary_goal: 'Visibility', instagram: 'fitlife_india', created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
-      { id: 'lead-2-' + activeTenant, tenant_id: activeTenant, first_name: 'Aisha', last_name: 'Khan', email: 'aisha@luxebeauty.in', phone: '8765432109', company_name: 'Luxe Beauty', status: 'qualified', budget_range: '50k-100k', primary_goal: 'Authority', instagram: 'luxebeauty_in', created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString() }
+      { id: 'lead-2-' + activeTenant, tenant_id: activeTenant, first_name: 'Aisha', last_name: 'Khan', email: 'aisha@luxebeauty.in', phone: '8765432109', company_name: 'Luxe Beauty', status: 'qualified', budget_range: '50k-100k', primary_goal: 'Authority', instagram: 'luxebeauty_in', created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString() },
+      { 
+        id: 'lead-onboarding-demo-' + activeTenant, 
+        tenant_id: activeTenant, 
+        first_name: 'Sarah', 
+        last_name: 'Connor', 
+        email: 'sarah@skynet.com', 
+        phone: '9998887776', 
+        company_name: 'Cyberdyne Systems', 
+        status: 'onboarding_request', 
+        budget_range: '50k-100k', 
+        primary_goal: 'Visibility', 
+        instagram: 'cyberdyne_tech', 
+        tiktok: 'cyberdyne_shorts',
+        niche: 'Technology',
+        content_tone: 'Dark, cinematic, futuristic',
+        competitor_links: 'https://instagram.com/skynet\nhttps://instagram.com/t800',
+        inspiration_links: 'https://tiktok.com/@terminator\nhttps://tiktok.com/@sarah_shorts',
+        created_at: new Date().toISOString() 
+      }
     ];
     localStorage.setItem('db_leads', JSON.stringify([...leads, ...tenantLeads]));
 
     const proposals = JSON.parse(localStorage.getItem('db_proposals') || '[]');
     const tenantProposals = [
-      { id: 'prop-1-' + activeTenant, tenant_id: activeTenant, lead_id: 'lead-2-' + activeTenant, title: 'Luxe Beauty Retainer Scope', status: 'accepted', plan_type: 'accelerator', monthly_fee: 49999, reels_per_month: 15, shoot_days: 2, contract_duration: 6, created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString() }
+      { 
+        id: 'prop-1-' + activeTenant, 
+        tenant_id: activeTenant, 
+        lead_id: 'lead-2-' + activeTenant, 
+        client_name: 'Luxe Beauty',
+        status: 'accepted', 
+        plan_type: 'accelerator', 
+        monthly_fee: 49999, 
+        reels_per_month: 15, 
+        shoot_days_per_month: 2, 
+        contract_duration_months: 6, 
+        created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString() 
+      }
     ];
     localStorage.setItem('db_proposals', JSON.stringify([...proposals, ...tenantProposals]));
 
@@ -460,24 +728,23 @@ export const supabase = {
       const sessionToken = localStorage.getItem('mock_session_token');
       if (!sessionToken) return { data: { session: null }, error: null };
 
-      // Parse user details from real session or defaults
-      let activeUserId = 'user-admin-id';
-      let activeUserEmail = 'admin@montazmedias.com';
-      let activeUserName = 'Super Admin';
-
+      // Parse user details from session state or defaults
+      let activeUserId = localStorage.getItem('mock_session_user_id') || 'user-admin-id';
+      
       const rawSession = localStorage.getItem('sb-ywwvdfudibmxlcsvcqih-auth-token');
-      if (rawSession) {
+      if (rawSession && !localStorage.getItem('mock_session_user_id')) {
         try {
           const sessionObj = JSON.parse(rawSession);
           if (sessionObj && sessionObj.user) {
             activeUserId = sessionObj.user.id;
-            activeUserEmail = sessionObj.user.email;
-            activeUserName = sessionObj.user.user_metadata?.full_name || sessionObj.user.email.split('@')[0];
           }
         } catch (e) {
           console.error(e);
         }
       }
+
+      const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
+      const loggedUser = profiles.find((p: any) => p.id === activeUserId) || profiles.find((p: any) => p.email === 'admin@montazmedias.com') || profiles[0] || { id: 'user-admin-id', email: 'admin@montazmedias.com', full_name: 'Super Admin' };
 
       const mockSession = {
         access_token: 'mock-access-token',
@@ -485,9 +752,9 @@ export const supabase = {
         refresh_token: 'mock-refresh-token',
         token_type: 'bearer',
         user: {
-          id: activeUserId,
-          email: activeUserEmail,
-          user_metadata: { full_name: activeUserName }
+          id: loggedUser.id,
+          email: loggedUser.email,
+          user_metadata: { full_name: loggedUser.full_name }
         }
       };
       return { data: { session: mockSession }, error: null };
@@ -499,6 +766,7 @@ export const supabase = {
       
       if (matchedUser) {
         localStorage.setItem('mock_session_token', 'logged-in');
+        localStorage.setItem('mock_session_user_id', matchedUser.id);
         
         const members = JSON.parse(localStorage.getItem('db_organization_members') || '[]');
         const activeMember = members.find((m: any) => m.user_id === matchedUser.id);
@@ -521,6 +789,62 @@ export const supabase = {
       return { data: { user: null, session: null }, error: new Error('Invalid login credentials') };
     },
 
+    async signInWithOAuth({ provider }: any) {
+      if (provider === 'google') {
+        const email = "google_user@example.com";
+        const fullName = "Google User";
+        
+        let profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
+        let matchedUser = profiles.find((p: any) => p.email === email);
+        
+        if (!matchedUser) {
+          matchedUser = {
+            id: 'google-user-id',
+            email,
+            full_name: fullName,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          profiles.push(matchedUser);
+          localStorage.setItem('db_profiles', JSON.stringify(profiles));
+          
+          // Seed role as admin (so they see the admin portal after mock OAuth login)
+          const userRoles = JSON.parse(localStorage.getItem('db_user_roles') || '[]');
+          userRoles.push({
+            id: 'ur-google-user',
+            user_id: matchedUser.id,
+            role_id: 'role-admin-id',
+            tenant_id: 'org-id'
+          });
+          localStorage.setItem('db_user_roles', JSON.stringify(userRoles));
+          
+          const members = JSON.parse(localStorage.getItem('db_organization_members') || '[]');
+          members.push({
+            id: 'om-google-user',
+            organization_id: 'org-id',
+            user_id: matchedUser.id,
+            role: 'admin'
+          });
+          localStorage.setItem('db_organization_members', JSON.stringify(members));
+        }
+
+        localStorage.setItem('mock_session_token', 'logged-in');
+        localStorage.setItem('mock_session_user_id', matchedUser.id);
+        localStorage.setItem('brand_flow_active_tenant', 'org-id');
+        
+        const session = {
+          user: {
+            id: matchedUser.id,
+            email: matchedUser.email,
+            user_metadata: { full_name: matchedUser.full_name }
+          }
+        };
+        if (authCallback) authCallback('SIGNED_IN', session);
+        return { data: { provider: 'google', url: '#' }, error: null };
+      }
+      return { data: null, error: new Error('Unsupported provider') };
+    },
+
     async signUp({ email, password, options }: any) {
       const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
       if (profiles.some((p: any) => p.email === email)) {
@@ -541,6 +865,7 @@ export const supabase = {
 
     async signOut() {
       localStorage.removeItem('mock_session_token');
+      localStorage.removeItem('mock_session_user_id');
       localStorage.removeItem('brand_flow_active_tenant');
       if (authCallback) authCallback('SIGNED_OUT', null);
       return { error: null };
@@ -550,13 +875,14 @@ export const supabase = {
       authCallback = callback;
       const sessionToken = localStorage.getItem('mock_session_token');
       if (sessionToken) {
+        const activeUserId = localStorage.getItem('mock_session_user_id') || 'user-admin-id';
         const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
-        const adminUser = profiles.find((p: any) => p.email === 'admin@montazmedias.com') || profiles[0] || { id: 'user-admin-id', email: 'admin@montazmedias.com', full_name: 'Super Admin' };
+        const loggedUser = profiles.find((p: any) => p.id === activeUserId) || profiles.find((p: any) => p.email === 'admin@montazmedias.com') || profiles[0] || { id: 'user-admin-id', email: 'admin@montazmedias.com', full_name: 'Super Admin' };
         const session = {
           user: {
-            id: adminUser.id,
-            email: adminUser.email,
-            user_metadata: { full_name: adminUser.full_name }
+            id: loggedUser.id,
+            email: loggedUser.email,
+            user_metadata: { full_name: loggedUser.full_name }
           }
         };
         callback('INITIAL_SESSION', session);

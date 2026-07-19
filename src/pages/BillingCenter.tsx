@@ -22,7 +22,8 @@ import {
   Minus,
   CheckCircle,
   Clock,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
 
 interface BillingMetric {

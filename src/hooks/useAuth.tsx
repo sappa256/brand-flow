@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const permsSet = new Set<string>();
           userRolesData.forEach((ur: any) => {
-            if (ur.role?.name === 'Super Admin') {
+            if (ur.role?.name === 'Super Admin' || ur.role?.name === 'Agency Owner' || ur.role?.name === 'admin') {
               permsSet.add('*');
             }
             ur.role?.role_permissions?.forEach((rp: any) => {
@@ -209,6 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return { error: error as Error | null };
   };
+
+
 
   const signOut = async () => {
     await supabase.auth.signOut();

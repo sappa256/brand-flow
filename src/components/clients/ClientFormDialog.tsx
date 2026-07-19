@@ -86,32 +86,34 @@ export function ClientFormDialog({
   });
 
   useEffect(() => {
-    if (client) {
-      form.reset({
-        client_name: client.client_name,
-        brand_name: client.brand_name || '',
-        niche: client.niche || '',
-        plan_type: client.plan_type,
-        platforms_managed: client.platforms_managed || [],
-        start_date: client.start_date,
-        end_date: client.end_date || '',
-        status: client.status,
-        notes: client.notes || '',
-      });
-    } else {
-      form.reset({
-        client_name: '',
-        brand_name: '',
-        niche: '',
-        plan_type: 'essential',
-        platforms_managed: [],
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: '',
-        status: 'active',
-        notes: '',
-      });
+    if (open) {
+      if (client) {
+        form.reset({
+          client_name: client.client_name,
+          brand_name: client.brand_name || '',
+          niche: client.niche || '',
+          plan_type: client.plan_type,
+          platforms_managed: client.platforms_managed || [],
+          start_date: client.start_date,
+          end_date: client.end_date || '',
+          status: client.status,
+          notes: client.notes || '',
+        });
+      } else {
+        form.reset({
+          client_name: '',
+          brand_name: '',
+          niche: '',
+          plan_type: 'essential',
+          platforms_managed: [],
+          start_date: new Date().toISOString().split('T')[0],
+          end_date: '',
+          status: 'active',
+          notes: '',
+        });
+      }
     }
-  }, [client, form]);
+  }, [open, client, form]);
 
   const onSubmit = async (values: ClientFormValues) => {
     setIsSubmitting(true);
@@ -291,36 +293,29 @@ export function ClientFormDialog({
             <FormField
               control={form.control}
               name="platforms_managed"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Platforms Managed</FormLabel>
                   <div className="flex gap-4 flex-wrap">
                     {PLATFORMS.map((platform) => (
-                      <FormField
-                        key={platform.value}
-                        control={form.control}
-                        name="platforms_managed"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(platform.value)}
-                                onCheckedChange={(checked) => {
-                                  const current = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...current, platform.value]);
-                                  } else {
-                                    field.onChange(current.filter((v) => v !== platform.value));
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal cursor-pointer">
-                              {platform.label}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <div key={platform.value} className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value?.includes(platform.value)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, platform.value]);
+                              } else {
+                                field.onChange(current.filter((v) => v !== platform.value));
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal cursor-pointer">
+                          {platform.label}
+                        </FormLabel>
+                      </div>
                     ))}
                   </div>
                   <FormMessage />

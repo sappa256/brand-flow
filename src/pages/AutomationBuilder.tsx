@@ -24,6 +24,7 @@ import {
   Sparkles,
   ArrowRight,
   GitBranch,
+  Loader2,
   PlayCircle
 } from "lucide-react";
 

@@ -1,10 +1,10 @@
 import jsPDF from 'jspdf';
-import type { Contract, Client } from '@/types/crm';
+import type { Proposal, Lead } from '@/types/crm';
 import { format } from 'date-fns';
 import { LOGO_BASE64 } from '@/assets/logoBase64';
 
-interface ContractWithClient extends Contract {
-  client: Client;
+interface ProposalWithLead extends Proposal {
+  lead?: Lead | null;
 }
 
 const COMPANY_INFO = {
@@ -12,7 +12,7 @@ const COMPANY_INFO = {
   tagline: 'INSPIRE . VISUALIZE . EXECUTE',
   contact: 'K Swathi Priyanka',
   phone: '+91 9908455325',
-  website: 'www.montazmedias.com',
+  website: 'www.montazmedias.in',
   address: 'Seethammadhara, Vizag',
 };
 
@@ -53,9 +53,9 @@ function getServicesList(reelsPerMonth: number): string[] {
     ];
   } else {
     return [
-      'Competitor Research: Comprehensive analysis of competitors within the Client\'s industry to understand trends, strategies, and opportunities.',
-      `Ideation & Scripting for ${reelsPerMonth} Instagram Reels per month: We will create engaging and creative scripts tailored to the Client\'s brand.`,
-      `Video Editing for ${reelsPerMonth} Instagram Reels per month: Professional editing, including captions, color correction, and engaging visual elements.`,
+      'Competitor Research: Basic research of industry competitors to guide content positioning.',
+      `Ideation & Scripting for ${reelsPerMonth} Instagram Reels per month: Engaging and creative scripts tailored to the brand.`,
+      `Video Editing for ${reelsPerMonth} Instagram Reels per month: Professional post-production, sound engineering, and color grading.`,
       'Instagram Account Management: Full management of the Client\'s Instagram account, including but not limited to:',
       'Posting content (reels, stories, etc.)',
       'Engaging with followers and responding to comments',
@@ -150,7 +150,7 @@ function drawRichTextParagraph(
   return currentY;
 }
 
-export function generateContractPdf(contract: ContractWithClient): void {
+export function generateProposalPdf(proposal: ProposalWithLead): void {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -162,31 +162,35 @@ export function generateContractPdf(contract: ContractWithClient): void {
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
+  // Safely fallback undefined database fields
+  const clientName = proposal.client_name || 'Client';
+  const planType = (proposal.plan_type || 'essential').toLowerCase();
+  
+  // Safe plan lookup fallback to prevent crash on custom/unrecognized plans
+  const planDetails = PLAN_DETAILS[planType as keyof typeof PLAN_DETAILS] || PLAN_DETAILS.essential;
+  
+  const reelsPerMonth = proposal.reels_per_month || planDetails.reelsPerMonth || 8;
+  const shootDaysPerMonth = proposal.shoot_days_per_month || planDetails.shootDays || 2;
+  const contractDurationMonths = proposal.contract_duration_months || 6;
+  const monthlyFee = proposal.monthly_fee || 45000;
+  const totalValue = monthlyFee * contractDurationMonths;
+
   // Cover page colors
   const pinkColor: [number, number, number] = [236, 72, 153];
   const darkColor: [number, number, number] = [40, 40, 40];
   const grayColor: [number, number, number] = [100, 100, 100];
 
-  const clientName = contract.client?.client_name || 'Client Name';
-  const planType = (contract.client?.plan_type || 'accelerator').toLowerCase();
-  
-  // Safe plan lookup fallback to prevent crash on custom/unrecognized plans
-  const planDetails = PLAN_DETAILS[planType as keyof typeof PLAN_DETAILS] || PLAN_DETAILS.accelerator;
-  
-  // Determine reels quota based on client plan configuration
-  const reelsPerMonth = planDetails.reelsPerMonth || 12;
-
   // ============ COVER PAGE ============
   // Header Logo
   drawHeaderLogo(doc, margin, 20);
 
-  // Big Title: AGENCY CONTRACT
+  // Big Title: AGENCY PROPOSAL
   doc.setFontSize(44);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkColor);
   doc.text('AGENCY', margin, 78);
   doc.setTextColor(...pinkColor);
-  doc.text('CONTRACT', margin, 96);
+  doc.text('PROPOSAL', margin, 96);
 
   // Motto list
   doc.setFontSize(14);
@@ -197,11 +201,11 @@ export function generateContractPdf(contract: ContractWithClient): void {
   doc.text('EXECUTE', margin, 130);
 
   // Date at bottom-left
-  const contractDate = safeFormatDate(contract.start_date);
+  const proposalDate = format(new Date(), 'dd.MM.yyyy');
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...darkColor);
-  doc.text(contractDate === 'To Be Decided' ? 'Start Date: To Be Decided' : contractDate, margin, pageHeight - 70);
+  doc.text(proposalDate, margin, pageHeight - 70);
 
   // Prepared For & By Section
   const preparedByY = pageHeight - 60;
@@ -225,7 +229,6 @@ export function generateContractPdf(contract: ContractWithClient): void {
   doc.setFont('helvetica', 'normal');
   doc.text(COMPANY_INFO.phone, margin + 70, preparedByY + 18);
   doc.text(COMPANY_INFO.website, margin + 70, preparedByY + 24);
-  doc.text(COMPANY_INFO.address, margin + 70, preparedByY + 30);
 
   // Decorative right-side ribbons (Cover Page)
   drawFooterRibbons(doc, true);
@@ -246,8 +249,7 @@ export function generateContractPdf(contract: ContractWithClient): void {
   yPos += 12;
 
   // Intro Statement
-  const verboseDate = safeFormatDate(contract.start_date);
-  const introText = `This Agreement is made and entered into on the ${verboseDate}, by and between:`;
+  const introText = `This Agreement is made and entered into on the day of ${format(new Date(), "do 'of' MMMM, yyyy")}, by and between:`;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   const introLines = doc.splitTextToSize(introText, contentWidth);
@@ -268,8 +270,8 @@ export function generateContractPdf(contract: ContractWithClient): void {
     yPos += 5;
   });
   
-  if (contract.client?.brand_name) {
-    doc.text(contract.client.brand_name.toUpperCase(), margin, yPos);
+  if (proposal.lead?.niche) {
+    doc.text(proposal.lead.niche.toUpperCase(), margin, yPos);
     yPos += 5;
   }
   yPos += 5;
@@ -323,9 +325,9 @@ export function generateContractPdf(contract: ContractWithClient): void {
   yPos += 6;
 
   const timelinePoints = [
-    `Start Date: **${safeFormatDate(contract.start_date)}**`,
-    `Completion Date: **${safeFormatDate(contract.end_date)}** (${contract.duration_months}-month contract)`,
-    `The Service Provider will deliver ${reelsPerMonth >= 20 ? `approximately **${reelsPerMonth} total content pieces (Reels and Posts)**` : `**${reelsPerMonth} reels**`} every month for the duration of the ${contract.duration_months}-month contract.`
+    `Start Date: **To Be Decided**`,
+    `Completion Date: **${safeFormatDate(proposal.accepted_date || proposal.sent_date)}** (${contractDurationMonths}-month contract)`,
+    `The Service Provider will deliver ${reelsPerMonth >= 20 ? `approximately **${reelsPerMonth} total content pieces (Reels and Posts)**` : `**${reelsPerMonth} reels**`} every month for the duration of the ${contractDurationMonths}-month contract.`
   ];
   timelinePoints.forEach(pt => {
     yPos = drawRichTextParagraph(doc, pt, margin, yPos, contentWidth, 10, 5, true) + 1;
@@ -338,13 +340,9 @@ export function generateContractPdf(contract: ContractWithClient): void {
   doc.text('3. Payment Terms', margin, yPos);
   yPos += 6;
 
-  const monthlyRetainer = contract.monthly_retainer || 0;
-  const durationMonths = contract.duration_months || 0;
-  const totalVal = monthlyRetainer * durationMonths;
-
   const paymentPoints = [
-    `The total fee for the services described above is **${monthlyRetainer.toLocaleString('en-IN')} INR** per month, totaling **${totalVal.toLocaleString('en-IN')} INR** for ${durationMonths} months.`,
-    `A payment of **${monthlyRetainer.toLocaleString('en-IN')} INR** is due every month on the same date as the first month's payment.`,
+    `The total fee for the services described above is **${monthlyFee.toLocaleString('en-IN')} INR** per month, totaling **${totalValue.toLocaleString('en-IN')} INR** for ${contractDurationMonths} months.`,
+    `A payment of **${monthlyFee.toLocaleString('en-IN')} INR** is due every month on the same date as the first month's payment.`,
     `Payment Method: **Online Bank Transfer / Cash** (Without GST)`,
     `Invoices must be paid within **7 days** after receipt.`
   ];
@@ -491,39 +489,32 @@ export function generateContractPdf(contract: ContractWithClient): void {
   const signatureY = yPos + 10;
   
   // Vector signature lines aligned perfectly to margins
-  doc.setDrawColor(15, 23, 42); // slate 900
+  doc.setDrawColor(15, 23, 42); 
   doc.setLineWidth(0.5);
   doc.line(margin, signatureY, margin + 60, signatureY);
   doc.line(pageWidth - margin - 60, signatureY, pageWidth - margin, signatureY);
-  yPos = signatureY + 6;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   
-  // Center-align signature labels under the lines
   const providerCenterX = margin + 30;
   const clientCenterX = pageWidth - margin - 30;
   
-  doc.text('Montaz Medias (Service Provider)', providerCenterX, yPos, { align: 'center' });
+  doc.text(COMPANY_INFO.name + ' (Provider)', providerCenterX, signatureY + 6, { align: 'center' });
   
   // Handle multi-line client signature rendering centered
   const sigClientLines = clientName.split('\n');
   sigClientLines.forEach((line, idx) => {
     const val = idx === sigClientLines.length - 1 ? `${line} (Client)` : line;
-    doc.text(val, clientCenterX, yPos + (idx * 5), { align: 'center' });
+    doc.text(val, clientCenterX, signatureY + 6 + (idx * 5), { align: 'center' });
   });
 
-  // Footer with Page Numbers
+  // Footer
   doc.setFontSize(8);
   doc.setTextColor(...grayColor);
   doc.text(`Generated on ${format(new Date(), 'dd.MM.yyyy')}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-  // Safe date check for the filename to prevent RangeErrors
-  const safeDate = (contract.start_date && !isNaN(new Date(contract.start_date).getTime()))
-    ? new Date(contract.start_date)
-    : new Date();
-
-  // Trigger download
-  const fileName = `Contract_${clientName.replace(/\s+/g, '_').replace(/\n/g, '_')}_${format(safeDate, 'MMM_yyyy')}.pdf`;
+  // Save the PDF
+  const fileName = `Proposal_${clientName.replace(/\s+/g, '_').replace(/\n/g, '_')}_${format(new Date(), 'MMM_yyyy')}.pdf`;
   doc.save(fileName);
 }

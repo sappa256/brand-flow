@@ -19,6 +19,7 @@ import {
   Clock,
   RotateCcw,
   Sparkles,
+  Loader2,
   Undo
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";

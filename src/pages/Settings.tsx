@@ -14,9 +14,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download, Bell, Sparkles } from 'lucide-react';
+import { Users, Shield, Settings as SettingsIcon, Plus, Trash2, Loader2, FileText, Download, Bell, Sparkles, UserPlus } from 'lucide-react';
 import type { AppRole } from '@/types/crm';
 import { Navigate } from 'react-router-dom';
 import { generateContractPdf } from '@/lib/contractPdfGenerator';
@@ -33,24 +34,27 @@ interface NotificationPreferences {
   client_at_risk: boolean;
 }
 
-const ROLE_LABELS: Record<AppRole, string> = {
+const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   sales: 'Sales',
   strategy: 'Strategy',
   editor: 'Editor',
   social_media: 'Social Media',
+  client: 'Client',
 };
 
-const ROLE_COLORS: Record<AppRole, string> = {
+const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-destructive text-destructive-foreground',
   sales: 'bg-blue-500 text-white',
   strategy: 'bg-purple-500 text-white',
   editor: 'bg-orange-500 text-white',
   social_media: 'bg-green-500 text-white',
+  client: 'bg-purple-600 text-white',
 };
 
 interface TeamMember {
   id: string;
+  membershipId?: string;
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
@@ -126,7 +130,7 @@ function NotificationLogTable({ userId }: { userId?: string }) {
 }
 
 export default function Settings() {
-  const { hasRole, user, isLoading: authLoading } = useAuth();
+  const { hasRole, user, isLoading: authLoading, currentOrganization } = useAuth();
   const isAdmin = hasRole('admin');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -161,6 +165,12 @@ export default function Settings() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>('sales');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<AppRole>('sales');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editMemberName, setEditMemberName] = useState('');
+  const [editMemberEmail, setEditMemberEmail] = useState('');
+  const [editMemberRoles, setEditMemberRoles] = useState<AppRole[]>([]);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
     email_enabled: true,
     proposal_accepted: true,
@@ -250,45 +260,86 @@ export default function Settings() {
 
   // Fetch all team members with their roles
   const { data: teamMembers = [], isLoading } = useQuery({
-    queryKey: ['team-members'],
+    queryKey: ['team-members', currentOrganization?.id],
     queryFn: async () => {
-      // Fetch all profiles (admin can see all)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name');
+      if (!currentOrganization) return [];
 
-      if (profilesError) throw profilesError;
+      // Fetch active members in this organization
+      const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select('*, profile:profiles(*)')
+        .eq('organization_id', currentOrganization.id);
+
+      if (memberError) throw memberError;
 
       // Fetch all user roles
       const { data: allRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('*');
+        .select('*, role:roles(*)');
 
       if (rolesError) throw rolesError;
 
-      // Combine profiles with roles
-      const members: TeamMember[] = (profiles || []).map(profile => ({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: profile.email,
-        avatar_url: profile.avatar_url,
-        roles: (allRoles || [])
-          .filter(r => r.user_id === profile.id)
-          .map(r => r.role as AppRole),
-      }));
+      // Combine members with roles
+      const members: TeamMember[] = (memberData || []).map(member => {
+        const profile = member.profile;
+        const profileId = member.user_id;
+        return {
+          id: profileId,
+          membershipId: member.id,
+          full_name: profile?.full_name || 'Anonymous Member',
+          email: profile?.email || '',
+          avatar_url: profile?.avatar_url || '',
+          roles: (allRoles || [])
+            .filter(r => r.user_id === profileId)
+            .map(r => {
+              const roleVal = r.role;
+              if (roleVal && typeof roleVal === 'object') {
+                const name = (roleVal as any).name;
+                if (name === 'Agency Owner') return 'admin';
+                if (name === 'Sales Manager') return 'sales';
+                if (name === 'Strategist') return 'strategy';
+                if (name === 'Video Editor') return 'editor';
+                return name.toLowerCase().replace(' ', '_') as AppRole;
+              }
+              return r.role as AppRole;
+            }).filter(Boolean),
+        };
+      });
 
       return members;
     },
-    enabled: !authLoading && isAdmin,
+    enabled: !authLoading && isAdmin && !!currentOrganization?.id,
   });
 
   // Add role mutation
   const addRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      if (!currentOrganization) throw new Error('No active organization');
+      
+      const { data: dbRoles, error: fetchErr } = await supabase
+        .from('roles')
+        .select('id, name');
+      if (fetchErr) throw fetchErr;
+
+      const matchedRole = dbRoles?.find(r => {
+        const name = r.name.toLowerCase();
+        if (role === 'admin') return name === 'agency owner' || name === 'admin';
+        if (role === 'sales') return name === 'sales manager' || name === 'sales';
+        if (role === 'strategy') return name === 'strategist' || name === 'strategy';
+        if (role === 'editor') return name === 'video editor' || name === 'editor';
+        if (role === 'social_media') return name === 'social media manager' || name === 'social_media';
+        return false;
+      });
+
+      if (!matchedRole) throw new Error(`Role ${role} not found in database`);
+
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role });
+        .insert({ 
+          user_id: userId, 
+          role_id: matchedRole.id, 
+          tenant_id: currentOrganization.id 
+        });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -304,11 +355,31 @@ export default function Settings() {
   // Remove role mutation
   const removeRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      if (!currentOrganization) throw new Error('No active organization');
+
+      const { data: dbRoles, error: fetchErr } = await supabase
+        .from('roles')
+        .select('id, name');
+      if (fetchErr) throw fetchErr;
+
+      const matchedRole = dbRoles?.find(r => {
+        const name = r.name.toLowerCase();
+        if (role === 'admin') return name === 'agency owner' || name === 'admin';
+        if (role === 'sales') return name === 'sales manager' || name === 'sales';
+        if (role === 'strategy') return name === 'strategist' || name === 'strategy';
+        if (role === 'editor') return name === 'video editor' || name === 'editor';
+        if (role === 'social_media') return name === 'social media manager' || name === 'social_media';
+        return false;
+      });
+
+      if (!matchedRole) throw new Error(`Role ${role} not found in database`);
+
       const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
-        .eq('role', role);
+        .eq('role_id', matchedRole.id)
+        .eq('tenant_id', currentOrganization.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -319,6 +390,206 @@ export default function Settings() {
       toast({ title: 'Failed to remove role', description: error.message, variant: 'destructive' });
     },
   });
+
+  // Fetch pending invitations
+  const { data: teamInvitations = [] } = useQuery({
+    queryKey: ['team-invitations', currentOrganization?.id],
+    queryFn: async () => {
+      if (!currentOrganization) return [];
+      const { data, error } = await supabase
+        .from('organization_invitations')
+        .select('*')
+        .eq('organization_id', currentOrganization.id)
+        .eq('status', 'pending');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !authLoading && !!currentOrganization?.id,
+  });
+
+  // Invite member mutation
+  const inviteMemberMutation = useMutation({
+    mutationFn: async ({ email, role }: { email: string; role: AppRole }) => {
+      if (!currentOrganization) throw new Error('No active organization');
+
+      const inviteToken = crypto.randomUUID();
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 7);
+
+      const { error } = await supabase
+        .from('organization_invitations')
+        .insert({
+          organization_id: currentOrganization.id,
+          email,
+          role,
+          token: inviteToken,
+          expires_at: expires.toISOString(),
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      return `${window.location.origin}/accept-invite?token=${inviteToken}`;
+    },
+    onSuccess: (inviteUrl) => {
+      queryClient.invalidateQueries({ queryKey: ['team-invitations'] });
+      setInviteEmail('');
+      toast({ title: 'Invitation Generated', description: 'Invitation link copied to clipboard!' });
+      navigator.clipboard.writeText(inviteUrl);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to invite member', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Remove member mutation
+  const deleteMemberMutation = useMutation({
+    mutationFn: async ({ memberId, userId }: { memberId: string; userId: string }) => {
+      if (!currentOrganization) throw new Error('No active organization');
+
+      // Delete roles mapping
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('tenant_id', currentOrganization.id);
+
+      if (rolesError) throw rolesError;
+
+      // Delete from organization_members
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .delete()
+        .eq('id', memberId);
+
+      if (memberError) throw memberError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      toast({ title: 'Member removed', description: 'The user membership has been canceled.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to remove member', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Cancel invitation mutation
+  const cancelInviteMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      const { error } = await supabase
+        .from('organization_invitations')
+        .delete()
+        .eq('id', inviteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-invitations'] });
+      toast({ title: 'Invitation canceled' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to cancel invitation', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Edit member details mutation
+  const editMemberMutation = useMutation({
+    mutationFn: async ({ userId, name, email, roles }: { userId: string; name: string; email: string; roles: AppRole[] }) => {
+      if (!currentOrganization) throw new Error('No active organization');
+
+      // 1. Update profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: name, email })
+        .eq('id', userId);
+      if (profileError) throw profileError;
+
+      // 2. Fetch all dynamic roles from the database to map AppRole to role_id
+      const { data: dbRoles, error: rolesFetchError } = await supabase
+        .from('roles')
+        .select('id, name');
+      if (rolesFetchError) throw rolesFetchError;
+
+      const getRoleIdForAppRole = (appRole: AppRole) => {
+        const matched = dbRoles?.find(r => {
+          const rName = r.name.toLowerCase();
+          if (appRole === 'admin') return rName === 'agency owner' || rName === 'admin';
+          if (appRole === 'sales') return rName === 'sales manager' || rName === 'sales';
+          if (appRole === 'strategy') return rName === 'strategist' || rName === 'strategy';
+          if (appRole === 'editor') return rName === 'video editor' || rName === 'editor';
+          if (appRole === 'social_media') return rName === 'social media manager' || rName === 'social_media';
+          return false;
+        });
+        return matched?.id;
+      };
+
+      // 3. Fetch current roles of the user in this organization
+      const { data: currentRolesData, error: getRolesError } = await supabase
+        .from('user_roles')
+        .select('*, role:roles(*)')
+        .eq('user_id', userId)
+        .eq('tenant_id', currentOrganization.id);
+      if (getRolesError) throw getRolesError;
+
+      const currentRoles = (currentRolesData || []).map(r => {
+        const rName = r.role?.name;
+        if (rName === 'Agency Owner') return 'admin';
+        if (rName === 'Sales Manager') return 'sales';
+        if (rName === 'Strategist') return 'strategy';
+        if (rName === 'Video Editor') return 'editor';
+        if (rName === 'Social Media Manager') return 'social_media';
+        return (rName || '').toLowerCase().replace(' ', '_') as AppRole;
+      }).filter(Boolean);
+
+      // 4. Determine roles to add and delete
+      const rolesToAdd = roles.filter(r => !currentRoles.includes(r));
+      const rolesToDelete = currentRoles.filter(r => !roles.includes(r));
+
+      // 5. Delete removed roles in this organization
+      for (const role of rolesToDelete) {
+        const roleId = getRoleIdForAppRole(role);
+        if (roleId) {
+          const { error: deleteRoleError } = await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', userId)
+            .eq('role_id', roleId)
+            .eq('tenant_id', currentOrganization.id);
+          if (deleteRoleError) throw deleteRoleError;
+        }
+      }
+
+      // 6. Insert new roles in this organization
+      for (const role of rolesToAdd) {
+        const roleId = getRoleIdForAppRole(role);
+        if (roleId) {
+          const { error: addRoleError } = await supabase
+            .from('user_roles')
+            .insert({ 
+              user_id: userId, 
+              role_id: roleId, 
+              tenant_id: currentOrganization.id 
+            });
+          if (addRoleError) throw addRoleError;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      setIsEditDialogOpen(false);
+      toast({ title: 'Member details updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to update member details', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleOpenEditDialog = (member: TeamMember) => {
+    setSelectedMember(member);
+    setEditMemberName(member.full_name || '');
+    setEditMemberEmail(member.email || '');
+    setEditMemberRoles(member.roles);
+    setIsEditDialogOpen(true);
+  };
 
   if (authLoading) {
     return (
@@ -351,12 +622,8 @@ export default function Settings() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout title="User Settings">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Manage team members, roles, and app preferences</p>
-        </div>
 
         <Tabs defaultValue="team" className="space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full md:w-auto md:inline-flex">
@@ -388,6 +655,45 @@ export default function Settings() {
 
           {/* Team Management Tab */}
           <TabsContent value="team" className="space-y-6">
+            {/* Invite Panel */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Invite New Member</CardTitle>
+                <CardDescription>Generate a secure invitation link to add members to this workspace.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <Input 
+                    type="email" 
+                    placeholder="teammember@domain.com" 
+                    value={inviteEmail} 
+                    onChange={(e) => setInviteEmail(e.target.value)} 
+                    className="bg-background/40"
+                  />
+                </div>
+                <div className="w-[200px]">
+                  <Select value={inviteRole} onValueChange={(val) => setInviteRole(val as AppRole)}>
+                    <SelectTrigger className="bg-background/40">
+                      <SelectValue placeholder="Select Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(ROLE_LABELS) as [AppRole, string][]).map(([role, label]) => (
+                        <SelectItem key={role} value={role}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={() => inviteMemberMutation.mutate({ email: inviteEmail, role: inviteRole })} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white" 
+                  disabled={inviteMemberMutation.isPending || !inviteEmail || !inviteRole}
+                >
+                  {inviteMemberMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                  Generate Invite
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Team Members</CardTitle>
@@ -441,10 +747,10 @@ export default function Settings() {
                                     member.roles.map((role) => (
                                       <Badge
                                         key={role}
-                                        className={`${ROLE_COLORS[role]} cursor-pointer group relative text-xs`}
+                                        className={`${ROLE_COLORS[role] || 'bg-zinc-500 text-white'} cursor-pointer group relative text-xs`}
                                       >
-                                        <span className="hidden sm:inline">{ROLE_LABELS[role]}</span>
-                                        <span className="sm:hidden">{ROLE_LABELS[role].slice(0, 3)}</span>
+                                        <span className="hidden sm:inline">{ROLE_LABELS[role] || role}</span>
+                                        <span className="sm:hidden">{(ROLE_LABELS[role] || role).slice(0, 3)}</span>
                                         <button
                                           onClick={() => handleRemoveRole(member.id, role)}
                                           className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -460,16 +766,32 @@ export default function Settings() {
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleAddRole(member)}
-                                  disabled={member.roles.length >= 5}
-                                  className="h-8 px-2 sm:px-3"
-                                >
-                                  <Plus className="h-4 w-4 sm:mr-1" />
-                                  <span className="hidden sm:inline">Add Role</span>
-                                </Button>
+                                <div className="flex justify-end items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenEditDialog(member)}
+                                    className="h-8 px-2 sm:px-3"
+                                  >
+                                    <SettingsIcon className="h-4 w-4 sm:mr-1" />
+                                    <span className="hidden sm:inline">Edit</span>
+                                  </Button>
+                                  {member.id !== user?.id && member.id !== currentOrganization?.owner_id && member.membershipId && (
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to remove this member from the workspace?")) {
+                                          deleteMemberMutation.mutate({ memberId: member.membershipId!, userId: member.id });
+                                        }
+                                      }}
+                                      className="h-8 w-8 text-muted-foreground hover:text-red-400 text-right"
+                                      disabled={deleteMemberMutation.isPending}
+                                    >
+                                      {deleteMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    </Button>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -487,6 +809,62 @@ export default function Settings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Pending Invites */}
+            {teamInvitations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pending Workspace Invitations</CardTitle>
+                  <CardDescription>Copy active links for team members to join. Link expires in 7 days.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Assigned Role</TableHead>
+                        <TableHead>Expiration Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamInvitations.map((invite: any) => (
+                        <TableRow key={invite.id}>
+                          <TableCell>{invite.email}</TableCell>
+                          <TableCell className="capitalize text-muted-foreground">{ROLE_LABELS[invite.role as AppRole] || invite.role}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-right flex items-center justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                const inviteUrl = `${window.location.origin}/accept-invite?token=${invite.token}`;
+                                navigator.clipboard.writeText(inviteUrl);
+                                toast({ title: "Copied Link!", description: "Invitation link copied to clipboard!" });
+                              }}
+                              className="text-xs bg-background/50 hover:bg-purple-600 hover:text-white"
+                            >
+                              Copy Link
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => cancelInviteMutation.mutate(invite.id)}
+                              className="text-xs text-red-400 hover:text-red-300"
+                              disabled={cancelInviteMutation.isPending}
+                            >
+                              Cancel
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Roles Overview Tab */}
@@ -1143,6 +1521,110 @@ export default function Settings() {
             >
               {addRoleMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Add Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Details Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Member Details</DialogTitle>
+            <DialogDescription>
+              Modify name, email, and roles for {selectedMember?.full_name || 'this team member'}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="memberName">Name</Label>
+              <Input
+                id="memberName"
+                value={editMemberName}
+                onChange={(e) => setEditMemberName(e.target.value)}
+                placeholder="Full Name"
+                disabled={selectedMember?.id === currentOrganization?.owner_id}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="memberEmail">Email</Label>
+              <Input
+                id="memberEmail"
+                type="email"
+                value={editMemberEmail}
+                onChange={(e) => setEditMemberEmail(e.target.value)}
+                placeholder="Email Address"
+                disabled={selectedMember?.id === currentOrganization?.owner_id}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Assigned Roles</Label>
+              {selectedMember?.id === currentOrganization?.owner_id ? (
+                <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 p-3 rounded-md">
+                  This user is the Organization Owner. Their roles cannot be modified to prevent lockouts.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                  {(['admin', 'sales', 'strategy', 'editor', 'social_media'] as AppRole[]).map((role) => {
+                    const isChecked = editMemberRoles.includes(role);
+                    const descriptions: Record<AppRole, string> = {
+                      admin: 'Full administrator rights: settings, team, billing, clients.',
+                      sales: 'Access to manage leads and client proposals.',
+                      strategy: 'Access to client strategy templates and content cycles.',
+                      editor: 'Access to reels catalog and review annotations.',
+                      social_media: 'Access to content calendar and scheduling.',
+                    };
+                    return (
+                      <div key={role} className="flex items-start gap-3 p-2 rounded-md hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
+                        <Checkbox
+                          id={`role-${role}`}
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditMemberRoles((prev) => [...prev, role]);
+                            } else {
+                              setEditMemberRoles((prev) => prev.filter((r) => r !== role));
+                            }
+                          }}
+                        />
+                        <div className="grid gap-0.5 leading-none">
+                          <Label htmlFor={`role-${role}`} className="text-sm font-medium cursor-pointer">
+                            {ROLE_LABELS[role]}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {descriptions[role]}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedMember) {
+                  editMemberMutation.mutate({
+                    userId: selectedMember.id,
+                    name: editMemberName,
+                    email: editMemberEmail,
+                    roles: editMemberRoles,
+                  });
+                }
+              }}
+              disabled={editMemberMutation.isPending}
+            >
+              {editMemberMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,13 +6,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HealthBadge } from '@/components/shared/HealthBadge';
 import { ContractWarningBadge } from '@/components/shared/ContractWarningBadge';
-import { Plus, TrendingUp, Users as UsersIcon, Eye, Sparkles, LayoutGrid } from 'lucide-react';
+import { Plus, TrendingUp, Users as UsersIcon, Eye, Sparkles, LayoutGrid, Key, Copy, Check, Loader2 } from 'lucide-react';
 import type { Client } from '@/types/crm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ClientFormDialog } from '@/components/clients/ClientFormDialog';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
@@ -24,6 +34,85 @@ export default function Clients() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedAnalyticsClient, setSelectedAnalyticsClient] = useState<string>('');
+
+  // Portal Credentials Dialog States
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [credentialsClient, setCredentialsClient] = useState<Client | null>(null);
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPassword, setClientPassword] = useState('');
+  const [generatedCreds, setGeneratedCreds] = useState<{ email: string; pass: string } | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleOpenPortalCredentialsDialog = (client: Client) => {
+    setCredentialsClient(client);
+    setClientEmail((client as any).contact_email || '');
+    setClientPassword(Math.random().toString(36).substring(2, 10));
+    setGeneratedCreds(null);
+    setCopied(false);
+    setCredentialsDialogOpen(true);
+  };
+
+  const handleGenerateCredentials = async () => {
+    if (!credentialsClient || !clientEmail) {
+      toast.error('Client email is required');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: clientEmail,
+        password: clientPassword
+      });
+
+      if (error) throw error;
+      const newUser = data?.user;
+      if (!newUser) throw new Error('Failed to create credential user');
+
+      const activeTenant = localStorage.getItem('brand_flow_active_tenant') || 'org-id';
+
+      // 1. Map role
+      const { error: roleErr } = await supabase.from('user_roles').insert({
+        user_id: newUser.id,
+        role_id: 'role-client-id',
+        tenant_id: activeTenant
+      });
+      if (roleErr) throw roleErr;
+
+      // 2. Map organization membership
+      const { error: memberErr } = await supabase.from('organization_members').insert({
+        organization_id: activeTenant,
+        user_id: newUser.id,
+        role: 'editor'
+      });
+      if (memberErr) throw memberErr;
+
+      // 3. Link client record
+      const { error: clientUpdateErr } = await supabase
+        .from('clients')
+        .update({ user_id: newUser.id })
+        .eq('id', credentialsClient.id);
+      if (clientUpdateErr) throw clientUpdateErr;
+
+      setGeneratedCreds({ email: clientEmail, pass: clientPassword });
+      toast.success('Credentials created successfully!');
+      fetchClients();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to generate credentials');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopyCreds = () => {
+    if (!generatedCreds) return;
+    const text = `Client Portal Access Details:\nEmail: ${generatedCreds.email}\nPassword: ${generatedCreds.pass}\nURL: ${window.location.origin}/auth`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success('Credentials copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     fetchClients();
@@ -152,7 +241,7 @@ export default function Clients() {
       header: 'Start Date',
       render: (client: Client) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(client.start_date), 'MMM d, yyyy')}
+          {client.start_date ? format(new Date(client.start_date), 'MMM d, yyyy') : 'Not set'}
         </span>
       ),
     },
@@ -166,6 +255,32 @@ export default function Clients() {
       header: 'Status',
       render: (client: Client) => <StatusBadge status={client.status} />,
     },
+    {
+      key: 'portal',
+      header: 'Portal Access',
+      render: (client: Client) => {
+        const hasCreds = !!(client as any).user_id;
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            {hasCreds ? (
+              <Badge variant="outline" className="border-green-500/20 bg-green-500/10 text-green-400 font-bold text-[10px] uppercase">
+                Active
+              </Badge>
+            ) : (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-7 text-xs border-purple-500/35 text-purple-400 hover:bg-purple-950/20 gap-1"
+                onClick={() => handleOpenPortalCredentialsDialog(client)}
+              >
+                <Key className="h-3 w-3" />
+                Generate Access
+              </Button>
+            )}
+          </div>
+        );
+      }
+    }
   ];
 
   if (isLoading) {
@@ -296,6 +411,77 @@ export default function Clients() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+        <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Generate Portal Access Pass</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Create a client account mapped to the Client Portal for <strong className="text-white">{credentialsClient?.client_name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          {generatedCreds ? (
+            <div className="space-y-4 py-4">
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Login Credentials Generated</span>
+                <p>Email: <strong className="text-white font-mono">{generatedCreds.email}</strong></p>
+                <p>Password: <strong className="text-white font-mono">{generatedCreds.pass}</strong></p>
+                <p>Login URL: <strong className="text-purple-400 font-mono">{window.location.origin}/auth</strong></p>
+              </div>
+              <Button 
+                onClick={handleCopyCreds} 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold gap-2"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copied Details' : 'Copy Credentials'}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="client-email" className="text-xs text-zinc-300">Client Email Address</Label>
+                <Input 
+                  id="client-email" 
+                  type="email" 
+                  value={clientEmail} 
+                  onChange={(e) => setClientEmail(e.target.value)} 
+                  placeholder="client@brand.com"
+                  className="bg-zinc-950 border-zinc-800 text-white text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="client-pass" className="text-xs text-zinc-300">Default Access Password</Label>
+                <Input 
+                  id="client-pass" 
+                  type="text" 
+                  value={clientPassword} 
+                  onChange={(e) => setClientPassword(e.target.value)} 
+                  placeholder="Set Password"
+                  className="bg-zinc-950 border-zinc-800 text-white text-sm font-mono"
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setCredentialsDialogOpen(false)}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleGenerateCredentials} 
+                  disabled={generating} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                >
+                  {generating && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                  Generate Credentials
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ClientFormDialog
         open={dialogOpen}

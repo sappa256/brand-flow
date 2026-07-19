@@ -96,44 +96,63 @@ export function ProposalFormDialog({
   });
 
   useEffect(() => {
+    console.log('[PROPOSAL FORM ERRORS]', JSON.stringify(form.formState.errors));
+    console.log('[PROPOSAL FORM VALUES]', JSON.stringify(form.getValues()));
+  }, [form.formState.errors, form.formState.submitCount]);
+
+  useEffect(() => {
     fetchLeads();
   }, []);
 
   useEffect(() => {
-    if (proposal) {
-      form.reset({
-        lead_id: proposal.lead_id,
-        client_name: proposal.client_name,
-        plan_type: proposal.plan_type,
-        reels_per_month: proposal.reels_per_month,
-        platforms: proposal.platforms || ['instagram'],
-        shoot_days_per_month: proposal.shoot_days_per_month,
-        monthly_fee: proposal.monthly_fee,
-        contract_duration_months: proposal.contract_duration_months,
-        status: proposal.status,
-        internal_notes: proposal.internal_notes || '',
-      });
-    } else if (preselectedLead) {
-      form.reset({
-        lead_id: preselectedLead.id,
-        client_name: preselectedLead.full_name,
-        plan_type: 'essential',
-        reels_per_month: 8,
-        platforms: ['instagram'],
-        shoot_days_per_month: 2,
-        monthly_fee: 45000,
-        contract_duration_months: 6,
-        status: 'draft',
-        internal_notes: '',
-      });
+    if (open) {
+      if (proposal) {
+        form.reset({
+          lead_id: proposal.lead_id,
+          client_name: proposal.client_name,
+          plan_type: proposal.plan_type,
+          reels_per_month: proposal.reels_per_month,
+          platforms: proposal.platforms || ['instagram'],
+          shoot_days_per_month: proposal.shoot_days_per_month,
+          monthly_fee: proposal.monthly_fee,
+          contract_duration_months: proposal.contract_duration_months,
+          status: proposal.status,
+          internal_notes: proposal.internal_notes || '',
+        });
+      } else if (preselectedLead) {
+        form.reset({
+          lead_id: preselectedLead.id,
+          client_name: preselectedLead.full_name,
+          plan_type: 'essential',
+          reels_per_month: 8,
+          platforms: ['instagram'],
+          shoot_days_per_month: 2,
+          monthly_fee: 45000,
+          contract_duration_months: 6,
+          status: 'draft',
+          internal_notes: '',
+        });
+      } else {
+        form.reset({
+          lead_id: '',
+          client_name: '',
+          plan_type: 'essential',
+          reels_per_month: 8,
+          platforms: ['instagram'],
+          shoot_days_per_month: 2,
+          monthly_fee: 45000,
+          contract_duration_months: 6,
+          status: 'draft',
+          internal_notes: '',
+        });
+      }
     }
-  }, [proposal, preselectedLead, form]);
+  }, [open, proposal, preselectedLead, form]);
 
   const fetchLeads = async () => {
     const { data } = await supabase
       .from('leads')
       .select('*')
-      .in('status', ['qualified', 'proposal_required'])
       .order('full_name');
     if (data) setLeads(data as Lead[]);
   };
@@ -198,6 +217,8 @@ export function ProposalFormDialog({
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + values.contract_duration_months);
 
+    const associatedLead = leads.find(l => l.id === values.lead_id);
+
     // Create client
     const { data: client, error: clientError } = await supabase
       .from('clients')
@@ -209,6 +230,8 @@ export function ProposalFormDialog({
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
         status: 'active',
+        contact_email: associatedLead?.email || null,
+        contact_name: associatedLead ? `${associatedLead.first_name} ${associatedLead.last_name}` : null,
       })
       .select()
       .single();
@@ -227,6 +250,7 @@ export function ProposalFormDialog({
         end_date: endDate.toISOString().split('T')[0],
         duration_months: values.contract_duration_months,
         monthly_retainer: values.monthly_fee,
+        amount_received: 0,
         payment_status: 'pending',
         contract_status: 'active',
       });
@@ -264,7 +288,16 @@ export function ProposalFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lead *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const selected = leads.find(l => l.id === value);
+                        if (selected) {
+                          form.setValue('client_name', selected.full_name || '');
+                        }
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select lead" />
@@ -326,36 +359,29 @@ export function ProposalFormDialog({
             <FormField
               control={form.control}
               name="platforms"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Platforms *</FormLabel>
                   <div className="flex gap-4">
                     {PLATFORMS.map((platform) => (
-                      <FormField
-                        key={platform.value}
-                        control={form.control}
-                        name="platforms"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(platform.value)}
-                                onCheckedChange={(checked) => {
-                                  const current = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...current, platform.value]);
-                                  } else {
-                                    field.onChange(current.filter((v) => v !== platform.value));
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal cursor-pointer">
-                              {platform.label}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <div key={platform.value} className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value?.includes(platform.value)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, platform.value]);
+                              } else {
+                                field.onChange(current.filter((v) => v !== platform.value));
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal cursor-pointer">
+                          {platform.label}
+                        </FormLabel>
+                      </div>
                     ))}
                   </div>
                   <FormMessage />

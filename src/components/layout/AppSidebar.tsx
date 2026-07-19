@@ -99,8 +99,8 @@ const navGroups: NavGroup[] = [
 
 const standaloneItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },
-  { title: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'sales', 'strategy'] },
-  { title: 'Automation', href: '/automation', icon: Cpu, roles: ['admin', 'strategy'] },
+  { title: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin'] },
+  { title: 'Automation', href: '/automation', icon: Cpu, roles: ['admin'] },
   { title: 'Billing', href: '/billing', icon: CreditCard, roles: ['admin'] },
   { title: 'Owner Ops', href: '/owner-dashboard', icon: Command, roles: ['admin'] },
   { title: 'Files', href: '/files', icon: FolderOpen, roles: ['admin', 'sales', 'strategy', 'editor', 'social_media'] },

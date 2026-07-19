@@ -2,7 +2,7 @@
 
 export type AppRole = 'admin' | 'sales' | 'strategy' | 'editor' | 'social_media';
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal_required' | 'disqualified';
+export type LeadStatus = 'onboarding_request' | 'new' | 'contacted' | 'qualified' | 'proposal_required' | 'disqualified';
 export type RevenueRange = 'below_50k' | '50k_to_2l' | '2l_to_5l' | 'above_5l';
 export type BudgetRange = '45k' | '75k' | '100k_plus';
 export type LeadSource = 'website' | 'instagram' | 'referral' | 'ads';
@@ -64,6 +64,10 @@ export interface Lead {
   assigned_sales_id: string | null;
   status: LeadStatus;
   notes: string | null;
+  tiktok?: string | null;
+  competitor_links?: string | null;
+  content_tone?: string | null;
+  inspiration_links?: string | null;
   created_at: string;
   updated_at: string;
   // Joined data
