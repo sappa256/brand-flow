@@ -12,6 +12,7 @@ interface StatsCardProps {
     isPositive: boolean;
   };
   className?: string;
+  onClick?: () => void;
 }
 
 export function StatsCard({
@@ -21,9 +22,20 @@ export function StatsCard({
   icon,
   trend,
   className,
+  onClick,
 }: StatsCardProps) {
   return (
-    <Card className={cn('relative overflow-hidden group hover-lift', className)}>
+    <Card
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={cn(
+        'relative overflow-hidden group hover-lift',
+        onClick && 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40',
+        className
+      )}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">

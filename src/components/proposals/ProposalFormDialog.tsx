@@ -231,7 +231,7 @@ export function ProposalFormDialog({
         end_date: endDate.toISOString().split('T')[0],
         status: 'active',
         contact_email: associatedLead?.email || null,
-        contact_name: associatedLead ? `${associatedLead.first_name} ${associatedLead.last_name}` : null,
+        contact_name: associatedLead?.full_name || null,
       })
       .select()
       .single();

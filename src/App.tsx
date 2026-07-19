@@ -77,6 +77,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
+      <Route path="/login" element={<Auth />} />
       <Route path="/onboard-request" element={<OnboardRequest />} />
       <Route path="/portal" element={<ProtectedRoute allowNoOrg={true}><PortalDashboard /></ProtectedRoute>} />
       <Route path="/approve/:token" element={<ClientPortal />} />

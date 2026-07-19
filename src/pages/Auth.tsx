@@ -10,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import logo from '@/assets/logo.png';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -34,6 +36,9 @@ export default function Auth() {
   const { user, isLoading, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -73,6 +78,28 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const email = loginForm.getValues('email');
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      toast({
+        title: 'Enter your email',
+        description: 'Type your email in the field above, then click "Forgot Password?".',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsSendingReset(false);
+    if (error) {
+      toast({ title: 'Reset failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Reset email sent', description: `Check ${email} for the reset link.` });
+    }
+  };
+
   const handleSignup = async (data: SignupFormData) => {
     setIsSubmitting(true);
     const { error } = await signUp(data.email, data.password, data.fullName);
@@ -97,14 +124,16 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-primary/5">
+      <Card className="w-full max-w-md border-primary/10 shadow-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-2xl">
-            M
-          </div>
-          <CardTitle className="text-2xl">Montaz Medias</CardTitle>
-          <CardDescription>CRM Dashboard</CardDescription>
+          <img
+            src={logo}
+            alt="Montaz Medias"
+            className="mx-auto mb-4 h-14 w-14 object-contain drop-shadow-lg"
+          />
+          <CardTitle className="text-2xl">Brand Flow — Workspace Login</CardTitle>
+          <CardDescription>Sign in to your Montaz Medias workspace</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
@@ -136,13 +165,42 @@ export default function Auth() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <div className="relative">
+                            <Input
+                              type={showLoginPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowLoginPassword(v => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                              aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <div className="flex justify-end -mt-2">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={isSendingReset}
+                      className="text-xs text-primary hover:underline disabled:opacity-60"
+                    >
+                      {isSendingReset ? 'Sending…' : 'Forgot Password?'}
+                    </button>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -186,7 +244,22 @@ export default function Auth() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <div className="relative">
+                            <Input
+                              type={showSignupPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSignupPassword(v => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                              aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -205,7 +278,11 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
@@ -213,6 +290,9 @@ export default function Auth() {
               </Form>
             </TabsContent>
           </Tabs>
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Internal use only · Montaz Medias
+          </p>
         </CardContent>
       </Card>
     </div>

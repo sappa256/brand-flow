@@ -340,7 +340,7 @@ export default function Contracts() {
                   <label className="text-[10px] text-muted-foreground uppercase font-semibold">Email</label>
                   <Input 
                     type="email" 
-                    value={stripeCheckoutContract?.client?.email || 'client@example.com'} 
+                    value={(stripeCheckoutContract?.client as any)?.email || 'client@example.com'} 
                     disabled 
                     className="bg-black/30 border-white/10 text-sm h-9" 
                   />

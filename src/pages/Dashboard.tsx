@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatsCard } from '@/components/shared/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, FileText, Building2, IndianRupee, TrendingUp, Film } from 'lucide-react';
+import { Users, FileText, Building2, IndianRupee, TrendingUp, Film, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
   totalLeads: number;
@@ -28,6 +30,7 @@ interface RecentActivity {
 
 export default function Dashboard() {
   const { hasAnyRole } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -144,8 +147,8 @@ export default function Dashboard() {
   return (
     <AppLayout title="Dashboard">
       <div className="space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+        {/* Stats Grid — balanced 3-col on desktop */}
+        <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-3 xl:grid-cols-5">
           {hasAnyRole(['admin', 'sales']) && (
             <>
               <div className="stagger-1 animate-fade-in-up">
@@ -154,6 +157,7 @@ export default function Dashboard() {
                   value={stats?.totalLeads || 0}
                   subtitle="All time"
                   icon={<Users className="h-6 w-6" />}
+                  onClick={() => navigate('/leads')}
                 />
               </div>
               <div className="stagger-2 animate-fade-in-up">
@@ -162,6 +166,7 @@ export default function Dashboard() {
                   value={stats?.pendingProposals || 0}
                   subtitle="Draft + Sent"
                   icon={<FileText className="h-6 w-6" />}
+                  onClick={() => navigate('/proposals')}
                 />
               </div>
             </>
@@ -174,6 +179,7 @@ export default function Dashboard() {
                 value={stats?.activeClients || 0}
                 subtitle={stats?.atRiskClients ? `${stats.atRiskClients} at risk` : 'All healthy'}
                 icon={<Building2 className="h-6 w-6" />}
+                onClick={() => navigate('/clients')}
               />
             </div>
           )}
@@ -185,6 +191,7 @@ export default function Dashboard() {
                 value={formatCurrency(stats?.monthlyRevenue || 0)}
                 subtitle="Active contracts"
                 icon={<IndianRupee className="h-6 w-6" />}
+                onClick={() => navigate('/contracts')}
               />
             </div>
           )}
@@ -196,6 +203,7 @@ export default function Dashboard() {
                 value={stats?.reelsThisMonth || 0}
                 subtitle="Created"
                 icon={<Film className="h-6 w-6" />}
+                onClick={() => navigate('/reels')}
               />
             </div>
           )}
@@ -213,16 +221,23 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 {recentActivity.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-8">
-                    No recent activity
-                  </p>
+                  <div className="flex flex-col items-center gap-3 py-8">
+                    <p className="text-muted-foreground text-sm">No leads yet.</p>
+                    <Button size="sm" onClick={() => navigate('/leads')} className="gap-2">
+                      <Plus className="h-4 w-4" /> Add your first lead
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {recentActivity.map((item, index) => (
                       <div
                         key={item.id}
+                        onClick={() => navigate('/leads')}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate('/leads'); }}
                         className={cn(
-                          "flex items-center justify-between py-2 border-b last:border-0 animate-fade-in-up transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg",
+                          "flex items-center justify-between py-2 border-b last:border-0 animate-fade-in-up transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg cursor-pointer",
                           `stagger-${Math.min(index + 1, 6)}`
                         )}
                       >

@@ -39,6 +39,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -110,12 +111,17 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, roles, signOut, hasAnyRole, organizations, currentOrganization, setActiveOrganization } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Sales: true,
     Planning: true,
     Content: true,
   });
+
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -148,6 +154,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4 space-y-3">
         <Link 
           to="/" 
+          onClick={handleNavClick}
           className="flex items-center gap-3 group cursor-pointer"
         >
           <div className="relative overflow-hidden rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
@@ -213,7 +220,7 @@ export function AppSidebar() {
                       onMouseEnter={() => setHoveredItem(item.href)}
                       onMouseLeave={() => setHoveredItem(null)}
                     >
-                      <Link to={item.href} className="relative z-10 flex items-center gap-3">
+                      <Link to={item.href} onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                         <item.icon 
                           className={cn(
                             "h-4 w-4 transition-all duration-300",
@@ -294,7 +301,7 @@ export function AppSidebar() {
                               onMouseEnter={() => setHoveredItem(item.href)}
                               onMouseLeave={() => setHoveredItem(null)}
                             >
-                              <Link to={item.href} className="flex items-center gap-3">
+                              <Link to={item.href} onClick={handleNavClick} className="flex items-center gap-3">
                                 <item.icon 
                                   className={cn(
                                     "h-4 w-4 transition-all duration-300",
@@ -338,7 +345,7 @@ export function AppSidebar() {
                     onMouseEnter={() => setHoveredItem('/org-settings')}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <Link to="/org-settings" className="relative z-10 flex items-center gap-3">
+                    <Link to="/org-settings" onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                       <Building2 
                         className={cn(
                           "h-4 w-4 transition-all duration-500",
@@ -366,7 +373,7 @@ export function AppSidebar() {
                     onMouseEnter={() => setHoveredItem('/settings')}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <Link to="/settings" className="relative z-10 flex items-center gap-3">
+                    <Link to="/settings" onClick={handleNavClick} className="relative z-10 flex items-center gap-3">
                       <Settings 
                         className={cn(
                           "h-4 w-4 transition-all duration-500",
@@ -395,14 +402,19 @@ export function AppSidebar() {
               {getInitials(profile?.full_name)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0 transition-all duration-300 group-hover:translate-x-0.5">
+          <Link
+            to="/settings"
+            onClick={handleNavClick}
+            className="flex-1 min-w-0 transition-all duration-300 group-hover:translate-x-0.5 rounded-md hover:bg-sidebar-accent/50 -mx-1 px-1 py-0.5"
+            aria-label="Open user settings"
+          >
             <p className="text-sm font-medium truncate text-sidebar-foreground">
               {profile?.full_name || 'User'}
             </p>
             <p className="text-xs text-muted-foreground truncate capitalize">
               {roles[0]?.replace('_', ' ') || 'No role'}
             </p>
-          </div>
+          </Link>
           
           <Tooltip>
             <TooltipTrigger asChild>
