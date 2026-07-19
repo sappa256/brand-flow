@@ -154,6 +154,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4 space-y-3">
         <Link 
           to="/" 
+          onClick={handleNavClick}
           className="flex items-center gap-3 group cursor-pointer"
         >
           <div className="relative overflow-hidden rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
@@ -401,14 +402,19 @@ export function AppSidebar() {
               {getInitials(profile?.full_name)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0 transition-all duration-300 group-hover:translate-x-0.5">
+          <Link
+            to="/settings"
+            onClick={handleNavClick}
+            className="flex-1 min-w-0 transition-all duration-300 group-hover:translate-x-0.5 rounded-md hover:bg-sidebar-accent/50 -mx-1 px-1 py-0.5"
+            aria-label="Open user settings"
+          >
             <p className="text-sm font-medium truncate text-sidebar-foreground">
               {profile?.full_name || 'User'}
             </p>
             <p className="text-xs text-muted-foreground truncate capitalize">
               {roles[0]?.replace('_', ' ') || 'No role'}
             </p>
-          </div>
+          </Link>
           
           <Tooltip>
             <TooltipTrigger asChild>
